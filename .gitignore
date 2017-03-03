@@ -1,0 +1,16 @@
+target
+data
+testdata/new
+Project1
+sav
+*.bak
+*.suo
+.classpath
+.project
+.settings
+dependency-reduced-pom.xml
+/bin/
+/_savedTest/
+/versions/
+/.gradle/
+/build/
