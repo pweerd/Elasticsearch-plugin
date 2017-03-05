@@ -4,7 +4,7 @@
        "_bm/cache/dump": "Dumps the caches (experimental)",   
        "_bm/version": "Shows loaded versions of this plugin plus some settings",       
        "_view": "Shows contents of a record. {index}/{type}/{id}/_view",
-       "_termlist": "Shows indexed terms. {index}/_termlist/{field}",
+       "_termlist": "Shows indexed terms. {index}/_termlist/{field}"
    },    
    "example similarity": {
        "settings": {
@@ -15,7 +15,7 @@
                 "max_tf", 0.2,
                 "force_tf": -1,
                 "bias_tf": 0.6f;
-                "discount_overlaps": true);
+                "discount_overlaps": true
              }
           }
        }
