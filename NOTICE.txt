@@ -1,0 +1,5 @@
+Bitmanager's Elasticsearch Plugin
+Copyright 2012-2017 De Bitmanager (http://bitmanager.nl)
+
+This product includes software developed by The Apache Software
+Foundation (http://www.apache.org/).

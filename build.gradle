@@ -1,0 +1,52 @@
+plugins {
+  id "com.github.ngyewch.git-version" version "0.2"
+}
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'eclipse'
+apply plugin: 'com.github.ngyewch.git-version' 
+
+group = 'nl.bitmanager'
+version = '5.0.0'
+
+description = """bitmanager-elasticsearch-plugin"""
+project.ext { version2 = version }
+
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+ext.revision = 'git rev-list --count HEAD'.execute().text.trim()
+ext.hash = 'git rev-parse --short HEAD'.execute().text.trim()
+ext.version2 = "${version}.${ext.revision}"
+
+jar.doFirst {
+ manifest {
+  attributes \
+   'build-version': project.version2, \
+   'Implementation-Title': project.description, \
+   'build-date': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"), \
+   'git-commit': 'git rev-parse --short HEAD'.execute().text.trim(), \
+   'copyright': 'De Bitmanager 2016, www.bitmanager.nl'
+ }
+}
+
+repositories {
+        
+     maven { url "http://repo.maven.apache.org/maven2" }
+}
+dependencies {
+    compile group: 'org.elasticsearch', name: 'elasticsearch', version:'5.0.0'
+    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.6.2'
+    compile group: 'org.apache.lucene', name: 'lucene-spatial', version:'6.2.0'
+    compile group: 'com.spatial4j', name: 'spatial4j', version:'0.4.1'
+    compile(group: 'com.vividsolutions', name: 'jts', version:'1.13') {
+exclude(module: 'xercesImpl')
+    }
+    testCompile group: 'junit', name: 'junit', version:'4.10'
+    testCompile(group: 'com.google.guava', name: 'guava', version:'18.0') {
+exclude(module: 'jsr305')
+    }
+    testCompile group: 'org.apache.lucene', name: 'lucene-test-framework', version:'6.2.0'
+    testCompile group: 'org.hamcrest', name: 'hamcrest-all', version:'1.3'
+}
