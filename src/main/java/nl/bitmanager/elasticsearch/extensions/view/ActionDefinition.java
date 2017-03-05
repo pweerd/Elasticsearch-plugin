@@ -29,7 +29,7 @@ import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 public class ActionDefinition extends ShardActionDefinitionBase {
 
     public static final ActionDefinition INSTANCE;
-    public static final ActionHandler<? extends ActionRequest<?>, ? extends ActionResponse> HANDLER;
+    public static final ActionHandler<? extends ActionRequest, ? extends ActionResponse> HANDLER;
 
     static {
         INSTANCE = new ActionDefinition();

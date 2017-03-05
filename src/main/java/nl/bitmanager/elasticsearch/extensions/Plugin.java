@@ -104,7 +104,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     }
 
     @Override
-    public List<ActionHandler<? extends ActionRequest<?>, ? extends ActionResponse>> getActions() {
+    public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
         logger.info("returning 4 transport actions");
         return Arrays.asList(nl.bitmanager.elasticsearch.extensions.version.ActionDefinition.HANDLER,
                 nl.bitmanager.elasticsearch.extensions.view.ActionDefinition.HANDLER,
