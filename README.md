@@ -18,7 +18,7 @@ The main entry points are:
 * [_bm/cache/dump](#_bm_cache_dump)
 
 Besides that, two other classes are provided:
-* Similarity plugin
+* [Similarity plugin](#similarity)
 * A string-type that that can be analysed and allows for doc-values.
 
 ## <a name="bm_version"></a>_bm/version
@@ -171,7 +171,7 @@ type           | query | Type of the cache (request or query)
 
 
 
-## Similairty
+## Similarity
 
 This custom similarity aims to help scoring small fields. Like authors, cities, parts, etc. In these cases Lucene's scoring is somewhat 'explosive' and it is hard to do some relative scoring. This similarity forces scores to be around 1.0, which makes them more predictable where the score is still dependent on the tf and idf. By default idf is switched off. 
 
