@@ -136,8 +136,15 @@ public class DocInverter {
         int N = fieldInfos.size();
         FieldInfo[] ret = new FieldInfo[N];
         
+        int j=0;
         for (int i=0; i<N; i++) {
-            ret[i] = fieldInfos.fieldInfo(i);
+            ret[j] = fieldInfos.fieldInfo(i);
+            if (ret[j]==null) continue;
+            j++;
+        }
+        if (j != N) {
+            ret = Arrays.copyOf(ret, j);
+            N = j;
         }
         Arrays.sort(ret, fieldComparator);
         return ret;
@@ -153,7 +160,7 @@ public class DocInverter {
             } else {
                 if (name1.charAt(0)=='_') return -1;
             }
-            return arg0.name.compareTo(arg1.name);
+            return name0.compareTo(name1);
         }
     };
 
@@ -169,7 +176,7 @@ public class DocInverter {
 
         boolean inField=false;
         for (FieldInfo field: fieldInfos) {
-            if (!selectedFields.isSelected (field.name.toLowerCase())) continue;
+            if (field==null || !selectedFields.isSelected (field.name.toLowerCase())) continue;
             
             if (inField) {
                 json.endObject();
