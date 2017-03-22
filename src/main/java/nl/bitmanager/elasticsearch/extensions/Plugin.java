@@ -142,7 +142,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
 
     private static final Map<String, Mapper.TypeParser> typeParsers;
     static {
-        Map<String, Mapper.TypeParser> tmp = new HashMap<String, Mapper.TypeParser>(1);
+        Map<String, Mapper.TypeParser> tmp = new HashMap<String, Mapper.TypeParser>(2);
         tmp.put (TextFieldWithDocvaluesMapper.CONTENT_TYPE, new TextFieldWithDocvaluesMapper.TypeParser());
         tmp.put ("analyzed_keyword", new TextFieldWithDocvaluesMapper.TypeParser());
         typeParsers = tmp;
