@@ -218,20 +218,21 @@ It supports a sub-query that enables to search within deleted documents.
 Example to find all deleted documents:
 ```javascript
     {
-          "query": {
-              "match_deleted": {}
+        "query": {
+            "match_deleted": {}
         }
     }
 ```
 Example to find all deleted documents that match a certain term:
 ```javascript
     {
-          "query": {
-              "match_deleted": {
-                  "query": {
-                      "term": {"field": "value"}
-              }
-        }
+        "query": {
+            "match_deleted": {
+                "query": {
+                    "term": {"field": "value"}
+                }
+            }
+        }   
     }
 ```
 [Back to the top](#bitmanagers-elasticsearch-plugin)
