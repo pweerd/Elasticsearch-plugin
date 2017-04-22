@@ -19,7 +19,11 @@ The main entry points are:
 
 Besides that, two other classes are provided:
 * [Similarity plugin](#similarity)
+* [match_deleted query](#match_deleted)
 * A string-type that that can be analysed and allows for doc-values.
+
+## _bm
+Shows the html version of this readme. (http://localhost:9200/_bm)
 
 ## <a name="bm_version"></a>_bm/version
 This entrypoint checks if this plugin can be found on all nodes and it checks if the version and filesize is the same on all nodes.
@@ -207,7 +211,27 @@ The total score is calculated as 1.0 + idf + tf, where 0<=idf<=max_idf and 0<=tf
 [Back to the top](#bitmanagers-elasticsearch-plugin)
 
 
+## <a name="match_deleted"></a>match_deleted query
+The match_deleted query matches by default all deleted documents. It is a way to view the deleted documents in the index.
+It supports a sub-query that enables to search within deleted documents.
 
-
-## _bm
-Shows the html version of this readme. (http://localhost:9200/_bm)
+Example to find all deleted documents:
+```javascript
+    {
+          "query": {
+              "match_deleted": {}
+        }
+    }
+```
+Example to find all deleted documents that match a certain term:
+```javascript
+    {
+          "query": {
+              "match_deleted": {
+                  "query": {
+                      "term": {"field": "value"}
+              }
+        }
+    }
+```
+[Back to the top](#bitmanagers-elasticsearch-plugin)

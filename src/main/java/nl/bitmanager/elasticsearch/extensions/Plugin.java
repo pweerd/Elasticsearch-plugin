@@ -19,6 +19,7 @@
 
 package nl.bitmanager.elasticsearch.extensions;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,18 +40,19 @@ import org.elasticsearch.indices.analysis.AnalysisModule.AnalysisProvider;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.AnalysisPlugin;
 import org.elasticsearch.plugins.MapperPlugin;
+import org.elasticsearch.plugins.SearchPlugin;
 import org.elasticsearch.rest.RestHandler;
 //import java.util.function.BiFunction;
 
 import nl.bitmanager.elasticsearch.analyses.TokenFilterProvider;
+import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQuery;
+import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQueryBuilder;
 import nl.bitmanager.elasticsearch.mappers.TextFieldWithDocvaluesMapper;
 import nl.bitmanager.elasticsearch.similarity.BoundedSimilarity;
 import nl.bitmanager.elasticsearch.support.Utils;
 
-public class Plugin extends org.elasticsearch.plugins.Plugin implements AnalysisPlugin, ActionPlugin, MapperPlugin {// implements
-                                                                                                      // AnalysisPlugin,
-                                                                                                      // ActionPlugin,
-                                                                                                      // {
+public class Plugin extends org.elasticsearch.plugins.Plugin implements AnalysisPlugin, ActionPlugin, MapperPlugin, SearchPlugin {
+
     public static String version;
     public static final String Name = "bitmanager-extensions";
     public static final Logger logger = Loggers.getLogger("bitmanager-ext");
@@ -139,6 +141,16 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     public Map<String, MetadataFieldMapper.TypeParser> getMetadataMappers() {
         return Collections.emptyMap();
     }
+    
+    @Override
+    public List<QuerySpec<?>> getQueries() {
+        List<QuerySpec<?>> ret = new ArrayList<QuerySpec<?>>(1);
+        QuerySpec<?> x = new QuerySpec<>(MatchDeletedQuery.NAME, MatchDeletedQueryBuilder::new, MatchDeletedQueryBuilder::fromXContent);
+        ret.add (x);
+
+        return ret;
+    }
+
 
     private static final Map<String, Mapper.TypeParser> typeParsers;
     static {
