@@ -131,7 +131,7 @@ public class DocInverter {
         json.endArray();
     }
 
-    static FieldInfo[]  getFields (IndexReader leafRdr) {
+    public static FieldInfo[]  getFields (IndexReader leafRdr) {
         FieldInfos fieldInfos = MultiFields.getMergedFieldInfos(leafRdr);
         int N = fieldInfos.size();
         FieldInfo[] ret = new FieldInfo[N];

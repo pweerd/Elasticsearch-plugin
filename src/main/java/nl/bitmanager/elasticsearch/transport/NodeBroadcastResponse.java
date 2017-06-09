@@ -27,10 +27,10 @@ import org.elasticsearch.action.support.nodes.BaseNodesResponse;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
-public class NodeBroadcastResponse extends BaseNodesResponse<NodeResponse> implements ToXContent {
+public class NodeBroadcastResponse extends BaseNodesResponse<NodeResponse> implements ToXContentObject {
     public final NodeActionDefinitionBase definition;
     private TransportItemBase transportItem;
 
@@ -73,9 +73,12 @@ public class NodeBroadcastResponse extends BaseNodesResponse<NodeResponse> imple
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+
         // PW buildBroadcastNodesHeader (builder);
-        if (transportItem != null)
+        builder.startObject();
+        if (transportItem != null) 
             transportItem.toXContent(builder, params);
+        builder.endObject();
         return builder;
     }
 

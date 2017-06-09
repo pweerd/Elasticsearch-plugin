@@ -38,7 +38,7 @@ public class BoolHandler extends TypeHandlerBase {
     }
 
     @Override
-    protected Object[] _docValuesToObjects(AtomicFieldData fieldData, int docid) {
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
         AtomicNumericFieldData numData = (AtomicNumericFieldData) fieldData;
         SortedNumericDocValues dvs = numData.getLongValues();
         dvs.setDocument(docid);

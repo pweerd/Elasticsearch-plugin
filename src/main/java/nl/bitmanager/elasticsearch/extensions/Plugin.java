@@ -19,19 +19,27 @@
 
 package nl.bitmanager.elasticsearch.extensions;
 
+import static java.util.Collections.emptyList;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
+import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.ClusterSettings;
+import org.elasticsearch.common.settings.IndexScopedSettings;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.index.IndexModule;
 import org.elasticsearch.index.analysis.TokenFilterFactory;
 import org.elasticsearch.index.mapper.Mapper;
@@ -41,13 +49,21 @@ import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.AnalysisPlugin;
 import org.elasticsearch.plugins.MapperPlugin;
 import org.elasticsearch.plugins.SearchPlugin;
+import org.elasticsearch.plugins.SearchPlugin.AggregationSpec;
+import org.elasticsearch.plugins.SearchPlugin.FetchPhaseConstructionContext;
+import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
-//import java.util.function.BiFunction;
+import org.elasticsearch.search.aggregations.bucket.children.ChildrenAggregationBuilder;
+import org.elasticsearch.search.aggregations.bucket.children.InternalChildren;
+import org.elasticsearch.search.fetch.FetchSubPhase;
 
 import nl.bitmanager.elasticsearch.analyses.TokenFilterProvider;
+import nl.bitmanager.elasticsearch.extensions.aggregations.InternalParentsAggregation;
+import nl.bitmanager.elasticsearch.extensions.aggregations.UndupByParentAggregatorBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQuery;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQueryBuilder;
 import nl.bitmanager.elasticsearch.mappers.TextFieldWithDocvaluesMapper;
+import nl.bitmanager.elasticsearch.search.FetchDocValues;
 import nl.bitmanager.elasticsearch.similarity.BoundedSimilarity;
 import nl.bitmanager.elasticsearch.support.Utils;
 
@@ -115,13 +131,16 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     }
 
     @Override
-    public List<Class<? extends RestHandler>> getRestHandlers() {
-        logger.info("returning 4 rest actions");
-        return Arrays.asList(nl.bitmanager.elasticsearch.extensions.version.VersionRestAction.class,
-                nl.bitmanager.elasticsearch.extensions.help.HelpRestAction.class,
-                nl.bitmanager.elasticsearch.extensions.view.ViewRestAction.class,
-                nl.bitmanager.elasticsearch.extensions.termlist.TermlistRestAction.class,
-                nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpRestAction.class);
+    public List<RestHandler> getRestHandlers(Settings settings, RestController restController, ClusterSettings clusterSettings,
+            IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
+            IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
+        ArrayList<RestHandler> ret = new ArrayList<RestHandler>(4);
+        ret.add (new nl.bitmanager.elasticsearch.extensions.version.VersionRestAction(settings, restController));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.help.HelpRestAction(settings, restController));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.view.ViewRestAction(settings, restController));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.termlist.TermlistRestAction(settings, restController));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpRestAction(settings, restController));
+        return ret;
     }
     
     @Override
@@ -150,6 +169,26 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
 
         return ret;
     }
+    
+    @Override
+    public List<FetchSubPhase> getFetchSubPhases(FetchPhaseConstructionContext context) {
+        List<FetchSubPhase> ret = new ArrayList<FetchSubPhase>(1);
+        FetchSubPhase x = new FetchDocValues ();
+        ret.add (x);
+        System.out.println("Register fetch");
+
+
+        return ret;
+    }
+
+    
+    @Override
+    public List<AggregationSpec> getAggregations() {
+        List<AggregationSpec> ret = new ArrayList<AggregationSpec>(1);
+        ret.add (UndupByParentAggregatorBuilder.createAggregationSpec());
+        return ret;
+    }
+
 
 
     private static final Map<String, Mapper.TypeParser> typeParsers;

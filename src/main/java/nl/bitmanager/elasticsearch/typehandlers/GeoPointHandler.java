@@ -42,7 +42,7 @@ public class GeoPointHandler extends SafeTypeHandler {
     }
 
     @Override
-    protected Object[] _docValuesToObjects(AtomicFieldData fieldData, int docid) {
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
         AbstractAtomicGeoPointFieldData dv = (AbstractAtomicGeoPointFieldData)fieldData;
         MultiGeoPointValues dvs = dv.getGeoPointValues();
         dvs.setDocument(docid);

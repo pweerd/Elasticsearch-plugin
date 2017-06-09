@@ -37,7 +37,7 @@ public class StringHandler extends SafeTypeHandler {
     }
 
     @Override
-    protected Object[] _docValuesToObjects(AtomicFieldData fieldData, int docid) {
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
         SortedBinaryDocValues dvs = fieldData.getBytesValues();
         dvs.setDocument(docid);
         int N = dvs.count();

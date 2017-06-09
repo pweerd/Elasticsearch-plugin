@@ -44,8 +44,8 @@ public class DateHandler extends Int64Handler {
         return convertToDate (super._bytesToObjects(bytes));
     }
     @Override
-    protected Object[] _docValuesToObjects(AtomicFieldData fieldData, int docid) {
-        return convertToDate (super._docValuesToObjects(fieldData, docid));
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
+        return convertToDate (super.docValuesToObjects(fieldData, docid));
     }
 
     @Override

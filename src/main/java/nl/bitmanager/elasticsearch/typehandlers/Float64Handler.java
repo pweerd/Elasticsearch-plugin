@@ -39,7 +39,7 @@ public class Float64Handler extends Int64Handler {
     }
     
     @Override
-    protected Object[] _docValuesToObjects(AtomicFieldData fieldData, int docid) {
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
         AtomicNumericFieldData numData = (AtomicNumericFieldData) fieldData;
         SortedNumericDoubleValues dvs = numData.getDoubleValues();
         dvs.setDocument(docid);

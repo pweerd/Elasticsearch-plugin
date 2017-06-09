@@ -31,8 +31,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.lucene.search.DocIdSet;
-import org.apache.lucene.search.LRUQueryCache;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.XLRUQueryCache;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Accountable;
@@ -40,6 +40,8 @@ import org.elasticsearch.SpecialPermission;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.bytes.BytesReference;
+import org.elasticsearch.common.cache.Cache;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.lucene.ShardCoreKeyMap;
@@ -49,8 +51,6 @@ import org.elasticsearch.indices.IndicesRequestCache;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
-import org.elasticsearch.common.bytes.BytesReference;
-import org.elasticsearch.common.cache.Cache;
 
 import nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpTransportItem.CacheType;
 import nl.bitmanager.elasticsearch.support.RegexReplace;
@@ -189,7 +189,7 @@ public class TransportAction extends NodeTransportActionBase {
         private void processQueryCache() throws Exception {
             System.out.println("Running processQueryCache");
             IndicesQueryCache indicesQueryCache = indicesService.getIndicesQueryCache();
-            LRUQueryCache lruCache = (LRUQueryCache) getField(indicesQueryCache, "cache");
+            XLRUQueryCache lruCache = (XLRUQueryCache) getField(indicesQueryCache, "cache");
             shardKeyMap = (ShardCoreKeyMap) getField(indicesQueryCache, "shardKeyMap");
             luceneInternalCache = lruCache == null ? null : (Map<Object, Object>) getField(lruCache, "cache");
             if (lruCache == null)

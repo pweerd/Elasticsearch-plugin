@@ -26,11 +26,11 @@ import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.rest.action.RestActions;
 
-public class ShardBroadcastResponse extends BroadcastResponse implements ToXContent {
+public class ShardBroadcastResponse extends BroadcastResponse implements ToXContentObject {
     private TransportItemBase transportItem;
 
     public ShardBroadcastResponse(TransportItemBase item) {
@@ -61,9 +61,11 @@ public class ShardBroadcastResponse extends BroadcastResponse implements ToXCont
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+        builder.startObject();
         RestActions.buildBroadcastShardsHeader(builder, params, this);
         if (transportItem != null)
             transportItem.toXContent(builder, params);
+        builder.endObject();
         return builder;
     }
 }

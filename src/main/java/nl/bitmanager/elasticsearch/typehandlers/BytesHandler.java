@@ -38,7 +38,7 @@ public class BytesHandler extends TypeHandlerBase {
     }
 
     @Override
-    protected Object[] _docValuesToObjects(AtomicFieldData fieldData, int docid) {
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
         return static_docValuesToObjects(fieldData, docid);
     }
 

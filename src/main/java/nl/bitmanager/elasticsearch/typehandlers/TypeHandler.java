@@ -29,6 +29,7 @@ public abstract class TypeHandler {
     public final String typeName;
     public final boolean knowType;
 
+    public abstract Object[] docValuesToObjects(AtomicFieldData fieldData, int docid);
     public abstract XContentBuilder export(XContentBuilder builder, byte[] bytes) throws IOException;
 
     public XContentBuilder export(XContentBuilder builder, String field, byte[] bytes) throws IOException {
