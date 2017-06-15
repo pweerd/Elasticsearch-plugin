@@ -300,28 +300,29 @@ Activate it like:
 ```
 The response is in the fields collection:
 ```javascript
-            "_source": {
-            ...
-            },
-            "fields": {
-               "_bm": [
-                  {
-                     "shard": 3,
-                     "segment": 0,
-                     "docid": 88401,
-                     "docid_rel": 88401,
-                     "docvalues": {
-                        "_parent#house": [
-                           "ARD1005"
-                        ],
-                        "_type": [
-                           "price"
-                        ]
-                     }
-                  }
-               ]
-            }
-         }
+{
+    "_source": {
+    ...
+    },
+    "fields": {
+       "_bm": [
+          {
+             "shard": 3,
+             "segment": 0,
+             "docid": 88401,
+             "docid_rel": 88401,
+             "docvalues": {
+                "_parent#house": [
+                   "ARD1005"
+                ],
+                "_type": [
+                   "price"
+                ]
+             }
+          }
+       ]
+    }
+ }
 ```
 
 [Back to the top](#bitmanagers-elasticsearch-plugin)
