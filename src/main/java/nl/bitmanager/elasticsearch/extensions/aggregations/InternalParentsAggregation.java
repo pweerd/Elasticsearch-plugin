@@ -41,7 +41,7 @@ public class InternalParentsAggregation extends InternalSingleBucketAggregation 
 
     @Override
     public String getWriteableName() {
-        return UndupByParentAggregatorBuilder.NAME;
+        return ParentsAggregatorBuilder.NAME;
     }
 
     @Override

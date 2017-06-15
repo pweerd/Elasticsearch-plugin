@@ -54,17 +54,19 @@ import org.elasticsearch.search.internal.SearchContext;
  *   It will save us enumerating parants for the top-level.
  * Note that this means that the docid's the are send to the sub-aggregators are alwyas of top-level - 1!!!   
  */
-public class UndupByParentAggregator extends SingleBucketAggregator {
+public class ParentsAggregator extends SingleBucketAggregator {
     private final String types[];
     private final Query typeFilters[];
     private final Weight typeWeights[];
     private final ParentChild valuesSources[];
     private final int levels;
+    public final boolean needParentDocs;
+
     
     private HashMap<Long,FixedBitSet> curBuckets;
 
 
-    public UndupByParentAggregator(UndupByParentAggregatorFactory factory, String name, AggregatorFactories factories, 
+    public ParentsAggregator(ParentsAggregatorFactory factory, String name, AggregatorFactories factories, 
             SearchContext context, Aggregator parent, List<PipelineAggregator> pipelineAggregators, Map<String, Object> metaData,
             ParentChild[] valuesSources)
             throws IOException {
@@ -73,6 +75,7 @@ public class UndupByParentAggregator extends SingleBucketAggregator {
         this.typeFilters = factory.typeFilters;
         this.valuesSources = valuesSources;
         this.typeWeights = new Weight[this.typeFilters.length];
+        this.needParentDocs = !factory.undup_only;
 //        for (int i=0; i<this.typeFilters.length; i++) {
 //            System.out.printf("\n[%d]: type=%s, filter=%s, src=%s\n", i, types[i], typeFilters[i], valuesSources[i]);
 //        }
@@ -99,8 +102,8 @@ public class UndupByParentAggregator extends SingleBucketAggregator {
         final Bits childDocs = context.bitsetFilterCache().getBitSetProducer(typeFilters[0]).getBitSet (ctx);
 
         //System.out.printf("Create leafCollector docbase=%d\n", ctx.docBase);
-        return this.levels > 1  ? new NonCollectingBucketCollector (this, globalOrdinals, childDocs)
-                                : new CollectingBucketCollector (this, globalOrdinals, childDocs, sub);
+        return this.levels > 1 || needParentDocs  ? new NonCollectingBucketCollector (this, globalOrdinals, childDocs)
+                                                  : new CollectingBucketCollector (this, globalOrdinals, childDocs, sub);
     }
     
     /**
@@ -112,11 +115,11 @@ public class UndupByParentAggregator extends SingleBucketAggregator {
         final protected Bits childDocs;
         final protected SortedDocValues globalOrdinals;
         final protected HashMap<Long,FixedBitSet> curBuckets;
-        final protected UndupByParentAggregator aggregator;
+        final protected ParentsAggregator aggregator;
 
         final protected int maxOrd;
         
-        public NonCollectingBucketCollector (UndupByParentAggregator aggregator, SortedDocValues globalOrdinals, Bits childDocs) {
+        public NonCollectingBucketCollector (ParentsAggregator aggregator, SortedDocValues globalOrdinals, Bits childDocs) {
             this.childDocs = childDocs;
             this.globalOrdinals = globalOrdinals;
             this.aggregator = aggregator;
@@ -147,7 +150,7 @@ public class UndupByParentAggregator extends SingleBucketAggregator {
      */
     protected static class CollectingBucketCollector extends NonCollectingBucketCollector {
         protected final LeafBucketCollector sub;
-        public CollectingBucketCollector (UndupByParentAggregator aggregator, SortedDocValues globalOrdinals, Bits childDocs, LeafBucketCollector sub) {
+        public CollectingBucketCollector (ParentsAggregator aggregator, SortedDocValues globalOrdinals, Bits childDocs, LeafBucketCollector sub) {
             super (aggregator, globalOrdinals, childDocs);
             this.sub = sub;
         }
@@ -202,14 +205,17 @@ public class UndupByParentAggregator extends SingleBucketAggregator {
  
     @Override
     protected void doPostCollection() throws IOException {
+        //We only need to do postprocessing when we have a multi-level request, or when we need to fetch the parent docs 
+        if (levels <= 1 && !needParentDocs) return;
+        
         BigArrays bigArrays = context.bigArrays();
         LongObjectPagedHashMap<FixedBitSet> bucketsPerOrd = new LongObjectPagedHashMap<FixedBitSet> (bigArrays);
         int maxBucket = (int)invertDocsAndBuckets (bucketsPerOrd, curBuckets);
-        if (UndupByParentAggregatorBuilder.DEBUG) System.out.printf("POST levels=%d, types=%d, srcs=%d, maxbucket=%d, curBuckets=%d\n", levels, types.length, valuesSources.length, maxBucket, curBuckets.size());
+        if (ParentsAggregatorBuilder.DEBUG) System.out.printf("POST levels=%d, types=%d, srcs=%d, maxbucket=%d, curBuckets=%d\n", levels, types.length, valuesSources.length, maxBucket, curBuckets.size());
         curBuckets = null;
         
         if (maxBucket < 0) {
-            if (UndupByParentAggregatorBuilder.DEBUG) System.out.println("Nothing to do here...");
+            if (ParentsAggregatorBuilder.DEBUG) System.out.println("Nothing to do here...");
             bucketsPerOrd.close();
             return;
         }
@@ -217,11 +223,13 @@ public class UndupByParentAggregator extends SingleBucketAggregator {
         
         IndexReader indexReader = context().searcher().getIndexReader();
 
-        for (int lvl = 1; lvl < levels; lvl++) {
+        //Loop through all levels to collect the ordinals and administrate them  
+        int lvl;
+        for (lvl = 1; lvl < levels; lvl++) {
             @SuppressWarnings("resource")
             LongObjectPagedHashMap<FixedBitSet> nextBucketsPerOrd = new LongObjectPagedHashMap<FixedBitSet> (bigArrays);
             Weight w = typeWeights[lvl];
-            if (UndupByParentAggregatorBuilder.DEBUG) System.out.printf("-- Handling child=%s, parent=%s\n", types[lvl], types[lvl+1]);
+            if (ParentsAggregatorBuilder.DEBUG) System.out.printf("-- Handling child=%s, parent=%s\n", types[lvl], types[lvl+1]);
             
             for (LeafReaderContext ctx : indexReader.leaves()) {
                 Scorer parentScorer = w.scorer(ctx);
@@ -231,7 +239,7 @@ public class UndupByParentAggregator extends SingleBucketAggregator {
                 DocIdSetIterator iter = parentScorer.iterator();
 
                 LeafBucketCollector sub = null;
-                if (lvl == levels-1) { //Highest level? We should output...
+                if (lvl == levels-1 && !needParentDocs) { //Highest level? We should output...
                     sub = collectableSubAggregators.getLeafCollector(ctx);
                     sub.setScorer(new ConstantScoreScorer(null, 1, iter));
                 }
@@ -285,6 +293,51 @@ public class UndupByParentAggregator extends SingleBucketAggregator {
             bucketsPerOrd = nextBucketsPerOrd;
             nextBucketsPerOrd = null;
         }
+
+        //If needed, do a last scan through the highest level parents to match the ordinals and output the undupped buckets
+        if (needParentDocs) {
+            Weight w = typeWeights[lvl];
+            if (ParentsAggregatorBuilder.DEBUG) System.out.printf("-- Handling parent=%s\n", types[lvl]);
+            
+            for (LeafReaderContext ctx : indexReader.leaves()) {
+                Scorer parentScorer = w.scorer(ctx);
+                if (parentScorer == null) {
+                    continue;
+                }
+                DocIdSetIterator iter = parentScorer.iterator();
+
+                LeafBucketCollector sub = collectableSubAggregators.getLeafCollector(ctx);
+                sub.setScorer(new ConstantScoreScorer(null, 1, iter));
+                final SortedDocValues globalOrdinals = valuesSources[lvl].globalOrdinalsValues(types[lvl], ctx);
+
+                final Bits liveDocs = ctx.reader().getLiveDocs();
+                while (true) {
+                    int docId = iter.nextDoc();
+                    if (docId == DocIdSetIterator.NO_MORE_DOCS) break;
+                    if (liveDocs != null && liveDocs.get(docId) == false) {
+                        continue;
+                    }
+
+                    long globalOrdinal = globalOrdinals.getOrd(docId); 
+                    if (globalOrdinal < 0) continue;
+                    
+                    FixedBitSet bucketBits = bucketsPerOrd.get(globalOrdinal);
+                    if (bucketBits == null) continue;
+
+                    int bucket = -1;
+                    final int maxbit = bucketBits.length()-1;
+                    while (true) {
+                        if (bucket >= maxbit) break;
+                        bucket = bucketBits.nextSetBit(bucket+1);
+                        if (bucket > maxbit) break;
+                        
+                        collectBucket(sub, docId, bucket);
+                    }
+
+                }
+            }
+        }
+        
         bucketsPerOrd.close();
         bucketsPerOrd = null;
     }
@@ -292,14 +345,14 @@ public class UndupByParentAggregator extends SingleBucketAggregator {
 
     @Override
     public InternalAggregation buildAggregation(long bucket) throws IOException {
-        if (UndupByParentAggregatorBuilder.DEBUG) System.out.printf("buildinternal (%d counts %d)\n", bucket, bucketDocCount(bucket));
+        if (ParentsAggregatorBuilder.DEBUG) System.out.printf("buildinternal (%d counts %d)\n", bucket, bucketDocCount(bucket));
         return new InternalParentsAggregation(name, bucketDocCount(bucket), bucketAggregations(bucket), pipelineAggregators(),
                     metaData());
     }
 
     @Override
     public InternalAggregation buildEmptyAggregation() {
-        if (UndupByParentAggregatorBuilder.DEBUG) System.out.printf("-- buildEmptyAggregation\n");
+        if (ParentsAggregatorBuilder.DEBUG) System.out.printf("-- buildEmptyAggregation\n");
         return new InternalParentsAggregation(name, 0, buildEmptySubAggregations(), pipelineAggregators(), metaData());
     }
 

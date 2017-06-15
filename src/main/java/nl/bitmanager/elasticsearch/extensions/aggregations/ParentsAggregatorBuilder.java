@@ -43,17 +43,18 @@ import org.elasticsearch.search.aggregations.support.ValuesSourceConfig;
 import org.elasticsearch.search.aggregations.support.ValuesSourceType;
 import org.elasticsearch.search.internal.SearchContext;
 
-public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<UndupByParentAggregatorBuilder> {
+public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<ParentsAggregatorBuilder> {
     public final static boolean DEBUG = false;
-    public static final String NAME = "undup-by-parent";
+    public static final String NAME = "bm_parent";
     
     public final String types[];
     public final Query typeFilters[];
     public final ValuesSourceConfig<ParentChild> valuesSourceConfigs[];
     public final int levels;
+    public final boolean undup_only;
 
 
-    public UndupByParentAggregatorBuilder(String name, String childType, int levels) {
+    public ParentsAggregatorBuilder(String name, String childType, int levels, boolean undup_only) {
         super(name); //, ValuesSourceType.BYTES, ValueType.STRING);
         if (childType == null) {
             throw new IllegalArgumentException("[childType] must not be null: [" + name + "]");
@@ -63,6 +64,7 @@ public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<U
         this.typeFilters = new Query[levels+1];
         this.valuesSourceConfigs = createConfigArr(levels+1);
         this.types[0] = childType;
+        this.undup_only = undup_only;
     }
     
     @SuppressWarnings("unchecked")
@@ -73,9 +75,10 @@ public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<U
     /**
      * Read from a stream.
      */
-    public UndupByParentAggregatorBuilder(StreamInput in) throws IOException {
+    public ParentsAggregatorBuilder(StreamInput in) throws IOException {
         super(in);
         levels = in.readVInt();
+        undup_only = in.readBoolean();
         this.types = new String[levels+1];
         this.typeFilters = new Query[levels+1];
         this.valuesSourceConfigs = createConfigArr(levels+1);
@@ -86,12 +89,13 @@ public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<U
     @Override
     protected void doWriteTo(StreamOutput out) throws IOException {
         out.writeVInt(levels);
+        out.writeBoolean(undup_only);
         out.writeString(types[0]);
     }
 
     
     public static AggregationSpec createAggregationSpec() {
-        AggregationSpec x = new AggregationSpec(NAME, UndupByParentAggregatorBuilder::new, UndupByParentAggregatorBuilder::parse);
+        AggregationSpec x = new AggregationSpec(NAME, ParentsAggregatorBuilder::new, ParentsAggregatorBuilder::parse);
         return x.addResultReader(InternalParentsAggregation::new);
     }
     
@@ -122,9 +126,10 @@ public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<U
         return configs;
     }
 
-    public static UndupByParentAggregatorBuilder parse(String aggregationName, QueryParseContext context) throws IOException {
+    public static ParentsAggregatorBuilder parse(String aggregationName, QueryParseContext context) throws IOException {
         String childType = null;
         int levels = 1;
+        boolean undup_only = true;
 
         XContentParser.Token token;
         String currentFieldName = null;
@@ -146,6 +151,12 @@ public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<U
                     continue;
                 }
                 break;
+            case VALUE_BOOLEAN:
+                if ("undup_only".equals(currentFieldName)) {
+                    undup_only = parser.booleanValue();
+                    continue;
+                }
+                break;
             default:
                 throw new ParsingException(parser.getTokenLocation(), "Unexpected token " + token + " in [" + aggregationName + "].");
             }
@@ -162,7 +173,7 @@ public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<U
                     "Field [levels] should be > 0 for [" + aggregationName + "] aggregation.");
         }
 
-        return new UndupByParentAggregatorBuilder(aggregationName, childType, levels);
+        return new ParentsAggregatorBuilder(aggregationName, childType, levels, undup_only);
     }
 
     @Override
@@ -173,7 +184,7 @@ public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<U
     @Override
     protected AggregatorFactory<?> doBuild(SearchContext context, AggregatorFactory<?> parent, Builder subfactoriesBuilder) throws IOException {
         ValuesSourceConfig<ParentChild>[] configs = resolveConfigs (context);
-        return new UndupByParentAggregatorFactory(this, configs, context, parent, subfactoriesBuilder, metaData);
+        return new ParentsAggregatorFactory(this, configs, context, parent, subfactoriesBuilder, metaData);
     }
 
     @Override
@@ -181,6 +192,7 @@ public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<U
         builder.startObject();
         builder.field("type", types[0]);
         builder.field("levels", levels);
+        builder.field("undup_only", undup_only);
         builder.endObject();
         return builder;
     }
@@ -192,7 +204,7 @@ public class UndupByParentAggregatorBuilder extends AbstractAggregationBuilder<U
 
     @Override
     protected boolean doEquals(Object obj) {
-        UndupByParentAggregatorBuilder other = (UndupByParentAggregatorBuilder) obj;
+        ParentsAggregatorBuilder other = (ParentsAggregatorBuilder) obj;
         return levels == other.levels && Objects.equals(types[0], other.types[0]);
     }
 }

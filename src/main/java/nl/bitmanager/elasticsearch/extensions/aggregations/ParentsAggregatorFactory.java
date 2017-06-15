@@ -36,13 +36,14 @@ import org.elasticsearch.search.aggregations.support.ValuesSourceConfig;
 import org.elasticsearch.search.internal.SearchContext;
 
 //fixme
-public class UndupByParentAggregatorFactory extends AggregatorFactory<UndupByParentAggregatorFactory> {
+public class ParentsAggregatorFactory extends AggregatorFactory<ParentsAggregatorFactory> {
     public final String types[];
     public final Query typeFilters[];
     public final ValuesSourceConfig<ParentChild> valuesSourceConfigs[];
     public final int levels;
+    public final boolean undup_only;
 
-    public UndupByParentAggregatorFactory(UndupByParentAggregatorBuilder bldr, ValuesSourceConfig<ParentChild> valuesSourceConfigs[] 
+    public ParentsAggregatorFactory(ParentsAggregatorBuilder bldr, ValuesSourceConfig<ParentChild> valuesSourceConfigs[] 
             , SearchContext context, AggregatorFactory<?> parent, Builder subFactoriesBuilder
             , Map<String, Object> metaData) throws IOException {
         super(bldr.getName(), context, parent, subFactoriesBuilder, metaData);
@@ -50,7 +51,8 @@ public class UndupByParentAggregatorFactory extends AggregatorFactory<UndupByPar
         this.typeFilters = bldr.typeFilters;
         this.levels = bldr.levels;
         this.valuesSourceConfigs = valuesSourceConfigs;
-        if (UndupByParentAggregatorBuilder.DEBUG) System.out.printf("Created UndupByParentAggregatorFactory[name=%s type=%s, parent=%s]\n", name, types[0], types[1]);
+        this.undup_only = bldr.undup_only;
+        if (ParentsAggregatorBuilder.DEBUG) System.out.printf("Created UndupByParentAggregatorFactory[name=%s type=%s, parent=%s]\n", name, types[0], types[1]);
     }
 
     @Override
@@ -62,7 +64,7 @@ public class UndupByParentAggregatorFactory extends AggregatorFactory<UndupByPar
         for (int i=1; i<=levels; i++) {
             valuesSources[i] = valuesSourceConfigs[i].toValuesSource(shardCtx);
             if (valuesSources[i] == null) {
-                if (UndupByParentAggregatorBuilder.DEBUG) System.out.printf("-- createUnmapped because type[%s] does not have a source\n", types[i]);
+                if (ParentsAggregatorBuilder.DEBUG) System.out.printf("-- createUnmapped because type[%s] does not have a source\n", types[i]);
                 return new NonCollectingAggregator(name, context, parent, pipelineAggregators, metaData) {
 
                     @Override
@@ -73,8 +75,8 @@ public class UndupByParentAggregatorFactory extends AggregatorFactory<UndupByPar
             }
         }
         
-        if (UndupByParentAggregatorBuilder.DEBUG) System.out.printf("-- Create aggregation from factory\n");
-        return new UndupByParentAggregator(this, name, factories, context, parent, pipelineAggregators, metaData, valuesSources);
+        if (ParentsAggregatorBuilder.DEBUG) System.out.printf("-- Create aggregation from factory\n");
+        return new ParentsAggregator(this, name, factories, context, parent, pipelineAggregators, metaData, valuesSources);
     }
 
 }

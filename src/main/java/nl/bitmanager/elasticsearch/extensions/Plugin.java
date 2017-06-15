@@ -51,6 +51,7 @@ import org.elasticsearch.plugins.MapperPlugin;
 import org.elasticsearch.plugins.SearchPlugin;
 import org.elasticsearch.plugins.SearchPlugin.AggregationSpec;
 import org.elasticsearch.plugins.SearchPlugin.FetchPhaseConstructionContext;
+import org.elasticsearch.plugins.SearchPlugin.SearchExtSpec;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.search.aggregations.bucket.children.ChildrenAggregationBuilder;
@@ -59,11 +60,12 @@ import org.elasticsearch.search.fetch.FetchSubPhase;
 
 import nl.bitmanager.elasticsearch.analyses.TokenFilterProvider;
 import nl.bitmanager.elasticsearch.extensions.aggregations.InternalParentsAggregation;
-import nl.bitmanager.elasticsearch.extensions.aggregations.UndupByParentAggregatorBuilder;
+import nl.bitmanager.elasticsearch.extensions.aggregations.ParentsAggregatorBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQuery;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQueryBuilder;
 import nl.bitmanager.elasticsearch.mappers.TextFieldWithDocvaluesMapper;
 import nl.bitmanager.elasticsearch.search.FetchDocValues;
+import nl.bitmanager.elasticsearch.search.SearchParmDocValues;
 import nl.bitmanager.elasticsearch.similarity.BoundedSimilarity;
 import nl.bitmanager.elasticsearch.support.Utils;
 
@@ -175,17 +177,22 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         List<FetchSubPhase> ret = new ArrayList<FetchSubPhase>(1);
         FetchSubPhase x = new FetchDocValues ();
         ret.add (x);
-        System.out.println("Register fetch");
-
-
         return ret;
     }
+    
+    @Override
+    public List<SearchExtSpec<?>> getSearchExts() {
+        List<SearchExtSpec<?>> ret = new ArrayList<SearchExtSpec<?>>(1);
+        ret.add(SearchParmDocValues.createSpec());
+        return ret;
+    }
+
 
     
     @Override
     public List<AggregationSpec> getAggregations() {
         List<AggregationSpec> ret = new ArrayList<AggregationSpec>(1);
-        ret.add (UndupByParentAggregatorBuilder.createAggregationSpec());
+        ret.add (ParentsAggregatorBuilder.createAggregationSpec());
         return ret;
     }
 
