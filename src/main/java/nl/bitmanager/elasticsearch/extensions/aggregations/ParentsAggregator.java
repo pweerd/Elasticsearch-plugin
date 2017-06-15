@@ -1,8 +1,8 @@
 /*
- * Licensed to Elasticsearch under one or more contributor
+ * Licensed to De Bitmanager under one or more contributor
  * license agreements. See the NOTICE file distributed with
  * this work for additional information regarding copyright
- * ownership. Elasticsearch licenses this file to you under
+ * ownership. De Bitmanager licenses this file to you under
  * the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package nl.bitmanager.elasticsearch.extensions.aggregations;
 
 import java.io.IOException;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
@@ -46,13 +48,17 @@ import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.ParentCh
 import org.elasticsearch.search.internal.SearchContext;
 
 /**
- * This aggregator undups the counts of buckets per parent documents.
- * It can do this by multiple parent levels.
- * If the levels are 1, an optimized path is choosen. We don't need to enumerate all the parent records.
- * However, for multiple levels, we need toenumerate parents at all levels to match their ordinals. (which are used for the matching)
+ * This aggregator supports 2 modi:
+ * - updup: we undup the buckets by their parent. (No guarantee that the docid passed to the next lvl are parents!)
+ * - map:   we map the docid's to their parents, and output them to the next level. (slower, but docids are guaranteed to be parents)
+ * 
+ * The aggregator can work on 1 or more levels.
+ * If the levels are 1, an optimized path is choosen. We don't need to enumerate all the parent records (unless mode=map).
+ * However, for multiple levels, we need to enumerate parents at all levels to match their ordinals. (which are used for the matching)
  *   In this case the highest level will be directly outputted to the sub-aggregators.
  *   It will save us enumerating parants for the top-level.
- * Note that this means that the docid's the are send to the sub-aggregators are alwyas of top-level - 1!!!   
+ *   
+ * The mapping to the parent docids is done in the post processing  
  */
 public class ParentsAggregator extends SingleBucketAggregator {
     private final String types[];
@@ -202,6 +208,16 @@ public class ParentsAggregator extends SingleBucketAggregator {
         }
         return maxBucket;
     }
+    
+    protected static void dumpDocument (String why, LeafReaderContext ctx, int docid) throws IOException {
+        Document d = ctx.reader().document(docid);
+        if (d==null) {
+            System.out.printf("%s: Doc [%d] in reader [base=%d, ord=%d] not found.\n", why, docid, ctx.docBase, ctx.ord);
+            return;
+        }
+        String uid = d.get("_uid");
+        System.out.printf("%s: Doc [%d] in reader [base=%d, ord=%d]: [%s].\n", why, docid, ctx.docBase, ctx.ord, uid);
+    }
  
     @Override
     protected void doPostCollection() throws IOException {
@@ -297,7 +313,7 @@ public class ParentsAggregator extends SingleBucketAggregator {
         //If needed, do a last scan through the highest level parents to match the ordinals and output the undupped buckets
         if (needParentDocs) {
             Weight w = typeWeights[lvl];
-            if (ParentsAggregatorBuilder.DEBUG) System.out.printf("-- Handling parent=%s\n", types[lvl]);
+            /*if (ParentsAggregatorBuilder.DEBUG)*/ System.out.printf("-- Handling parent=%s\n", types[lvl]);
             
             for (LeafReaderContext ctx : indexReader.leaves()) {
                 Scorer parentScorer = w.scorer(ctx);
@@ -317,12 +333,16 @@ public class ParentsAggregator extends SingleBucketAggregator {
                     if (liveDocs != null && liveDocs.get(docId) == false) {
                         continue;
                     }
+                    dumpDocument ("parent", ctx, docId);
 
                     long globalOrdinal = globalOrdinals.getOrd(docId); 
+                    System.out.println("-- Globalord=" + globalOrdinal);
                     if (globalOrdinal < 0) continue;
                     
                     FixedBitSet bucketBits = bucketsPerOrd.get(globalOrdinal);
+                    System.out.println("-- bucketBits=" + bucketBits);
                     if (bucketBits == null) continue;
+                    System.out.println("-- collecting");
 
                     int bucket = -1;
                     final int maxbit = bucketBits.length()-1;

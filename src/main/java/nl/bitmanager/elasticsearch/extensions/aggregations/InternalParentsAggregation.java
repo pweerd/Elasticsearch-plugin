@@ -1,8 +1,8 @@
 /*
- * Licensed to Elasticsearch under one or more contributor
+ * Licensed to De Bitmanager under one or more contributor
  * license agreements. See the NOTICE file distributed with
  * this work for additional information regarding copyright
- * ownership. Elasticsearch licenses this file to you under
+ * ownership. De Bitmanager licenses this file to you under
  * the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package nl.bitmanager.elasticsearch.extensions.aggregations;
 
 import java.io.IOException;
