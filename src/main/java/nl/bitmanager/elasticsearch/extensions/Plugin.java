@@ -19,8 +19,6 @@
 
 package nl.bitmanager.elasticsearch.extensions;
 
-import static java.util.Collections.emptyList;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,17 +47,11 @@ import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.AnalysisPlugin;
 import org.elasticsearch.plugins.MapperPlugin;
 import org.elasticsearch.plugins.SearchPlugin;
-import org.elasticsearch.plugins.SearchPlugin.AggregationSpec;
-import org.elasticsearch.plugins.SearchPlugin.FetchPhaseConstructionContext;
-import org.elasticsearch.plugins.SearchPlugin.SearchExtSpec;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
-import org.elasticsearch.search.aggregations.bucket.children.ChildrenAggregationBuilder;
-import org.elasticsearch.search.aggregations.bucket.children.InternalChildren;
 import org.elasticsearch.search.fetch.FetchSubPhase;
 
 import nl.bitmanager.elasticsearch.analyses.TokenFilterProvider;
-import nl.bitmanager.elasticsearch.extensions.aggregations.InternalParentsAggregation;
 import nl.bitmanager.elasticsearch.extensions.aggregations.ParentsAggregatorBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQuery;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQueryBuilder;
