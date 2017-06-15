@@ -47,6 +47,8 @@ import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
 import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.ParentChild;
 import org.elasticsearch.search.internal.SearchContext;
 
+import nl.bitmanager.elasticsearch.extensions.aggregations.ParentsAggregatorBuilder.AggregatorMode;
+
 /**
  * This aggregator supports 2 modi:
  * - updup: we undup the buckets by their parent. (No guarantee that the docid passed to the next lvl are parents!)
@@ -66,7 +68,8 @@ public class ParentsAggregator extends SingleBucketAggregator {
     private final Weight typeWeights[];
     private final ParentChild valuesSources[];
     private final int levels;
-    public final boolean needParentDocs;
+    public final AggregatorMode mode;
+    private final boolean needParentDocs;
 
     
     private HashMap<Long,FixedBitSet> curBuckets;
@@ -81,7 +84,8 @@ public class ParentsAggregator extends SingleBucketAggregator {
         this.typeFilters = factory.typeFilters;
         this.valuesSources = valuesSources;
         this.typeWeights = new Weight[this.typeFilters.length];
-        this.needParentDocs = !factory.undup_only;
+        this.mode = factory.mode;
+        this.needParentDocs = factory.mode == AggregatorMode.MapToParent;
 //        for (int i=0; i<this.typeFilters.length; i++) {
 //            System.out.printf("\n[%d]: type=%s, filter=%s, src=%s\n", i, types[i], typeFilters[i], valuesSources[i]);
 //        }
@@ -333,16 +337,13 @@ public class ParentsAggregator extends SingleBucketAggregator {
                     if (liveDocs != null && liveDocs.get(docId) == false) {
                         continue;
                     }
-                    dumpDocument ("parent", ctx, docId);
+                    //dumpDocument ("parent", ctx, docId);
 
                     long globalOrdinal = globalOrdinals.getOrd(docId); 
-                    System.out.println("-- Globalord=" + globalOrdinal);
                     if (globalOrdinal < 0) continue;
                     
                     FixedBitSet bucketBits = bucketsPerOrd.get(globalOrdinal);
-                    System.out.println("-- bucketBits=" + bucketBits);
                     if (bucketBits == null) continue;
-                    System.out.println("-- collecting");
 
                     int bucket = -1;
                     final int maxbit = bucketBits.length()-1;

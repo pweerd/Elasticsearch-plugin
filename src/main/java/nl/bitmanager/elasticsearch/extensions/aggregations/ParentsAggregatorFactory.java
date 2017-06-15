@@ -35,13 +35,15 @@ import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.ParentCh
 import org.elasticsearch.search.aggregations.support.ValuesSourceConfig;
 import org.elasticsearch.search.internal.SearchContext;
 
+import nl.bitmanager.elasticsearch.extensions.aggregations.ParentsAggregatorBuilder.AggregatorMode;
+
 //fixme
 public class ParentsAggregatorFactory extends AggregatorFactory<ParentsAggregatorFactory> {
     public final String types[];
     public final Query typeFilters[];
     public final ValuesSourceConfig<ParentChild> valuesSourceConfigs[];
     public final int levels;
-    public final boolean undup_only;
+    public final AggregatorMode mode;
 
     public ParentsAggregatorFactory(ParentsAggregatorBuilder bldr, ValuesSourceConfig<ParentChild> valuesSourceConfigs[] 
             , SearchContext context, AggregatorFactory<?> parent, Builder subFactoriesBuilder
@@ -51,7 +53,7 @@ public class ParentsAggregatorFactory extends AggregatorFactory<ParentsAggregato
         this.typeFilters = bldr.typeFilters;
         this.levels = bldr.levels;
         this.valuesSourceConfigs = valuesSourceConfigs;
-        this.undup_only = bldr.undup_only;
+        this.mode = bldr.mode;
         if (ParentsAggregatorBuilder.DEBUG) System.out.printf("Created UndupByParentAggregatorFactory[name=%s type=%s, parent=%s]\n", name, types[0], types[1]);
     }
 

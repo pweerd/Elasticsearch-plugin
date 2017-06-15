@@ -44,6 +44,7 @@ import org.elasticsearch.search.aggregations.support.ValuesSourceType;
 import org.elasticsearch.search.internal.SearchContext;
 
 public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<ParentsAggregatorBuilder> {
+    public enum AggregatorMode {Undup, MapToParent};
     public final static boolean DEBUG = false;
     public static final String NAME = "bm_parent";
     
@@ -51,11 +52,11 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
     public final Query typeFilters[];
     public final ValuesSourceConfig<ParentChild> valuesSourceConfigs[];
     public final int levels;
-    public final boolean undup_only;
+    public final AggregatorMode mode;
 
 
-    public ParentsAggregatorBuilder(String name, String childType, int levels, boolean undup_only) {
-        super(name); //, ValuesSourceType.BYTES, ValueType.STRING);
+    public ParentsAggregatorBuilder(String name, String childType, int levels, AggregatorMode mode) {
+        super(name); 
         if (childType == null) {
             throw new IllegalArgumentException("[childType] must not be null: [" + name + "]");
         }
@@ -64,7 +65,7 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
         this.typeFilters = new Query[levels+1];
         this.valuesSourceConfigs = createConfigArr(levels+1);
         this.types[0] = childType;
-        this.undup_only = undup_only;
+        this.mode = mode;
     }
     
     @SuppressWarnings("unchecked")
@@ -78,7 +79,7 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
     public ParentsAggregatorBuilder(StreamInput in) throws IOException {
         super(in);
         levels = in.readVInt();
-        undup_only = in.readBoolean();
+        mode = AggregatorMode.values()[in.readVInt()];
         this.types = new String[levels+1];
         this.typeFilters = new Query[levels+1];
         this.valuesSourceConfigs = createConfigArr(levels+1);
@@ -89,7 +90,7 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
     @Override
     protected void doWriteTo(StreamOutput out) throws IOException {
         out.writeVInt(levels);
-        out.writeBoolean(undup_only);
+        out.writeVInt(mode.ordinal());
         out.writeString(types[0]);
     }
 
@@ -129,7 +130,7 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
     public static ParentsAggregatorBuilder parse(String aggregationName, QueryParseContext context) throws IOException {
         String childType = null;
         int levels = 1;
-        boolean undup_only = true;
+        AggregatorMode mode = AggregatorMode.Undup;
 
         XContentParser.Token token;
         String currentFieldName = null;
@@ -144,6 +145,14 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
                     childType = parser.text();
                     continue;
                 }
+                if ("mode".equals(currentFieldName)) {
+                    switch (parser.text().toLowerCase()) {
+                        case "undup": mode = AggregatorMode.Undup; break;
+                        case "maptoparent": mode = AggregatorMode.MapToParent; break;
+                        default: throwParsingException (parser, aggregationName, "Invalid mode [%s]. Possible values: Undup, MapToParent.",  parser.text()); break;
+                    }
+                    continue;
+                }
                 break;
             case VALUE_NUMBER:
                 if ("levels".equals(currentFieldName)) {
@@ -151,29 +160,26 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
                     continue;
                 }
                 break;
-            case VALUE_BOOLEAN:
-                if ("undup_only".equals(currentFieldName)) {
-                    undup_only = parser.booleanValue();
-                    continue;
-                }
-                break;
             default:
-                throw new ParsingException(parser.getTokenLocation(), "Unexpected token " + token + " in [" + aggregationName + "].");
+                throwParsingException (parser, aggregationName, "Unexpected token [%s]", token);
             }
-            throw new ParsingException(parser.getTokenLocation(),
-                         "Unknown key for a " + token + " in [" + aggregationName + "]: [" + currentFieldName + "].");
+            throwParsingException (parser, aggregationName, "Unknown key for a %s. Field: [%s]", token, currentFieldName);
         }
 
-        if (childType == null) {
-            throw new ParsingException(parser.getTokenLocation(),
-                    "Missing [type] field for [" + aggregationName + "] aggregation.");
-        }
-        if (levels <= 0) {
-            throw new ParsingException(parser.getTokenLocation(),
-                    "Field [levels] should be > 0 for [" + aggregationName + "] aggregation.");
-        }
+        if (childType == null) 
+            throwParsingException (parser, aggregationName, "Missing [type] field");
+        if (levels <= 0) 
+            throwParsingException (parser, aggregationName, "Field [levels] should be > 0");
 
-        return new ParentsAggregatorBuilder(aggregationName, childType, levels, undup_only);
+        return new ParentsAggregatorBuilder(aggregationName, childType, levels, mode);
+    }
+    
+    private static void throwParsingException (XContentParser parser, String name, String msg) {
+        msg = String.format("Aggregation [%s]: %s", name, msg);
+        throw new ParsingException(parser.getTokenLocation(), msg);
+    }
+    private static void throwParsingException (XContentParser parser, String name, String fmt, Object... args) {
+        throwParsingException (parser, name, String.format(fmt, args));
     }
 
     @Override
@@ -192,19 +198,19 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
         builder.startObject();
         builder.field("type", types[0]);
         builder.field("levels", levels);
-        builder.field("undup_only", undup_only);
+        builder.field("mode", mode.toString());
         builder.endObject();
         return builder;
     }
 
     @Override
     protected int doHashCode() {
-        return Objects.hash(types[0]) ^ (8941*levels);
+        return Objects.hash(types[0]) ^ (8941*levels) ^ mode.hashCode();
     }
 
     @Override
     protected boolean doEquals(Object obj) {
         ParentsAggregatorBuilder other = (ParentsAggregatorBuilder) obj;
-        return levels == other.levels && Objects.equals(types[0], other.types[0]);
+        return levels == other.levels && mode == other.mode && Objects.equals(types[0], other.types[0]);
     }
 }
