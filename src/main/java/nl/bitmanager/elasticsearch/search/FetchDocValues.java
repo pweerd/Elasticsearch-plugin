@@ -30,6 +30,9 @@ public class FetchDocValues implements FetchSubPhase {
     public void hitExecute(SearchContext context, HitContext hitContext) {
         try {
             if (DEBUG) System.out.println("HIT execute1");
+            
+            SearchParmDocValues x = (SearchParmDocValues)context.getSearchExt("_bm");
+            if (x==null || !x.docvalues) return;
             if (context.storedFieldsContext() != null && context.storedFieldsContext().fetchFields() == false) {
                 return ;
             }
