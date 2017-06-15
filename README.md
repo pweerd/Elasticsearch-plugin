@@ -17,9 +17,11 @@ The main entry points are:
 * [_bm/version](#_bm_version)
 * [_bm/cache/dump](#_bm_cache_dump)
 
-Besides that, two other classes are provided:
+Besides that, a few extension classes are provided:
 * [Similarity plugin](#similarity)
 * [match_deleted query](#match_deleted)
+* [bm_parents aggregation](#bm_parents)
+* [diagnostics/docvalues fetcher](#diagnostics_fetcher)
 * A string-type that that can be analysed and allows for doc-values.
 
 ## _bm
@@ -236,3 +238,91 @@ Example to find all deleted documents that match a certain term:
     }
 ```
 [Back to the top](#bitmanagers-elasticsearch-plugin)
+
+## <a name="bm_parents"></a>bm_parents aggregation
+The bm_parents aggregation maps generated docs/buckets to their parent counterparts, and therefore effectivly dedeplucates buckets by their parent documents.
+
+The aggregator needs the type of the child documents and is able to handle multiple levels of parents. If the aggregator encounters a record that does not have the specified type, it is ignored.
+
+The aggregator has 2 modi:
+* mode=updup
+This mode is the most efficient. It tries to prevent the extra step of parent mapping. The downside is that it is not guaranteed that the records that are passed to the sub-aggregators are from the top-level parents. 
+* mode=mapToParent
+This mode is somewhat less efficient because it is forced that the docs that are passed to the sub-aggregators are real top-level parents.
+
+So, if you need sub aggregations, based on the parent documents, mapToParent is the option that is best. Otherwise, use mode=undup.
+The defaults are: level=1 and mode=undup.
+
+Example.
+Suppose we have employee-records that have company-records as their parents. We want to have an aggregation on the age of employees, but counted by their companies. So answering questions like: how many companies have employees with an age of 25.
+```javascript
+    {
+        "query": {
+            "match_all": {}
+            }
+        },   
+        "aggs": {
+           "raw": {
+               "terms": {
+                   "field": "age",
+                   "size":10
+           },
+           "aggs": {
+               "undupped": {
+                   "bm_parent": {
+                       "mode": "undup",
+                       "type": "employee",
+                       "levels": 1
+                   }
+               }
+           }
+       }
+    }
+```
+[Back to the top](#bitmanagers-elasticsearch-plugin)
+
+
+## <a name="diagnostics_fetcher"></a>Diagnostics/docvalues fetcher
+This is an extension that shows more information about a search hit.
+It shows doc-values and information about the shard and segment where the doc is found.
+
+Activate it like:
+```javascript
+    {
+        "ext": {
+            "_bm": {"diagnostics": true}
+        },
+        "query": {
+            "match_all": {}
+            }
+        }
+    }
+```
+The response is in the fields collection:
+```javascript
+            "_source": {
+            ...
+            },
+            "fields": {
+               "_bm": [
+                  {
+                     "shard": 3,
+                     "segment": 0,
+                     "docid": 88401,
+                     "docid_rel": 88401,
+                     "docvalues": {
+                        "_parent#house": [
+                           "ARD1005"
+                        ],
+                        "_type": [
+                           "price"
+                        ]
+                     }
+                  }
+               ]
+            }
+         }
+```
+
+[Back to the top](#bitmanagers-elasticsearch-plugin)
+
