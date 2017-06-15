@@ -240,7 +240,7 @@ Example to find all deleted documents that match a certain term:
 [Back to the top](#bitmanagers-elasticsearch-plugin)
 
 ## <a name="bm_parents"></a>bm_parents aggregation
-The bm_parents aggregation maps generated docs/buckets to their parent counterparts, and therefore effectivly dedeplucates buckets by their parent documents.
+The bm_parents aggregation maps generated docs/buckets to their parent counterparts, and therefore effectivly dedeplucates buckets by their parent documents. You could see this as a reverse children aggregation as well.
 
 The aggregator needs the type of the child documents and is able to handle multiple levels of parents. If the aggregator encounters a record that does not have the specified type, it is ignored.
 
