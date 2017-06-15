@@ -20,12 +20,10 @@
 package nl.bitmanager.elasticsearch.extensions.termlist;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 

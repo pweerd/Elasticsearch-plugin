@@ -78,7 +78,7 @@ public class FetchDiagnostics implements FetchSubPhase {
             DocumentMapper docMapper = context.mapperService().documentMapper(hitContext.hit().getType());
             DocumentFieldMappers mappers = docMapper.mappers();
             
-            FieldInfo[] segmentFields = DocInverter.getFields(ctx.reader());
+            //FieldInfo[] segmentFields = DocInverter.getFields(ctx.reader());
             IndexFieldDataService fds = context.fieldData();
             LinkedHashMap<String, Object> dst = new LinkedHashMap<String, Object>();
             for (FieldMapper f: mappers) {
