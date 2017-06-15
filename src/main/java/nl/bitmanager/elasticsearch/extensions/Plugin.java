@@ -64,8 +64,8 @@ import nl.bitmanager.elasticsearch.extensions.aggregations.ParentsAggregatorBuil
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQuery;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQueryBuilder;
 import nl.bitmanager.elasticsearch.mappers.TextFieldWithDocvaluesMapper;
-import nl.bitmanager.elasticsearch.search.FetchDocValues;
-import nl.bitmanager.elasticsearch.search.SearchParmDocValues;
+import nl.bitmanager.elasticsearch.search.FetchDiagnostics;
+import nl.bitmanager.elasticsearch.search.SearchParms;
 import nl.bitmanager.elasticsearch.similarity.BoundedSimilarity;
 import nl.bitmanager.elasticsearch.support.Utils;
 
@@ -175,7 +175,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     @Override
     public List<FetchSubPhase> getFetchSubPhases(FetchPhaseConstructionContext context) {
         List<FetchSubPhase> ret = new ArrayList<FetchSubPhase>(1);
-        FetchSubPhase x = new FetchDocValues ();
+        FetchSubPhase x = new FetchDiagnostics ();
         ret.add (x);
         return ret;
     }
@@ -183,7 +183,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     @Override
     public List<SearchExtSpec<?>> getSearchExts() {
         List<SearchExtSpec<?>> ret = new ArrayList<SearchExtSpec<?>>(1);
-        ret.add(SearchParmDocValues.createSpec());
+        ret.add(SearchParms.createSpec());
         return ret;
     }
 

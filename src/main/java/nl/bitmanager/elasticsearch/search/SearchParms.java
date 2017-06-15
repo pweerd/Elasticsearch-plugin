@@ -30,29 +30,32 @@ import org.elasticsearch.common.xcontent.XContentParser.Token;
 import org.elasticsearch.plugins.SearchPlugin.SearchExtSpec;
 import org.elasticsearch.search.SearchExtBuilder;
 
-public class SearchParmDocValues extends SearchExtBuilder {
+/**
+ * Extension class to be able to supplu extra search parameters
+ * Accessible via ext: { _bm: {}} in the query-body
+ */
+public class SearchParms extends SearchExtBuilder {
     public static final String WRITEABLENAME = "_bm";
-    public static final String F_DOCVALUES = "docvalues";
+    public static final String F_DIAGNOSTICS = "diagnostics";
     
-    public final boolean docvalues;
+    public final boolean diagnostics;
 
-    public SearchParmDocValues(StreamInput in) throws IOException {
-        docvalues = (in.readByte() == (byte)'T'); 
+    public SearchParms(StreamInput in) throws IOException {
+        diagnostics = in.readBoolean(); 
     }
 
-    public SearchParmDocValues(XContentParser parser) throws IOException {
+    public SearchParms(XContentParser parser) throws IOException {
         Token token;
         String fieldName=null;
-        boolean docvals = false;
+        boolean diagnostics = false;
         while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
-            System.out.println("next token: " + token);
             switch (token) {
             case FIELD_NAME: 
                 fieldName = parser.currentName();
                 continue;
             case VALUE_BOOLEAN:
-                if (F_DOCVALUES.equals(fieldName)) {
-                    docvals = parser.booleanValue();
+                if (F_DIAGNOSTICS.equals(fieldName)) {
+                    diagnostics = parser.booleanValue();
                     continue;
                 }
                 break;
@@ -62,7 +65,7 @@ public class SearchParmDocValues extends SearchExtBuilder {
             throw new ParsingException(parser.getTokenLocation(),
                          "Unknown key for a " + token + " in [" + WRITEABLENAME + "]: [" + fieldName + "].");
         }
-        this.docvalues = docvals;
+        this.diagnostics = diagnostics;
     }
 
     @Override
@@ -72,38 +75,39 @@ public class SearchParmDocValues extends SearchExtBuilder {
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
-        out.writeByte((byte) (docvalues ? 'T' : 'F'));
+        out.writeBoolean(diagnostics);
     }
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(WRITEABLENAME);
-        builder.field(F_DOCVALUES, docvalues);
+        builder.field(F_DIAGNOSTICS, diagnostics);
         builder.endObject();
         return builder;
     }
 
     @Override
     public int hashCode() {
-        return docvalues ? 'T' : 'F';
+        return diagnostics ? 1 : 0;
     }
 
     @Override
     public boolean equals(Object obj) {
-        return false;
+        if (obj==null || getClass() != obj.getClass()) return false;
+        return diagnostics == ((SearchParms)obj).diagnostics;
     }
 
-    public static SearchExtSpec<SearchParmDocValues> createSpec() {
-        return new SearchExtSpec<SearchParmDocValues>(WRITEABLENAME, 
-                SearchParmDocValues::read, 
-                SearchParmDocValues::parse);
+    public static SearchExtSpec<SearchParms> createSpec() {
+        return new SearchExtSpec<SearchParms>(WRITEABLENAME, 
+                SearchParms::read, 
+                SearchParms::parse);
     }
     
-    private static SearchParmDocValues parse (XContentParser parser) throws IOException {
-        return new SearchParmDocValues(parser);
+    private static SearchParms parse (XContentParser parser) throws IOException {
+        return new SearchParms(parser);
     }
     
-    private static SearchParmDocValues read (StreamInput in) throws IOException {
-        return new SearchParmDocValues(in);
+    private static SearchParms read (StreamInput in) throws IOException {
+        return new SearchParms(in);
     }
 }

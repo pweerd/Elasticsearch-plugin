@@ -42,7 +42,11 @@ import org.elasticsearch.search.internal.SearchContext;
 import nl.bitmanager.elasticsearch.extensions.view.DocInverter;
 import nl.bitmanager.elasticsearch.typehandlers.TypeHandler;
 
-public class FetchDocValues implements FetchSubPhase {
+/**
+ * This class optional fetches extra diagnostic information like segment-level info and docvalues.
+ * It is controlled via the SearchParms (supplied via ext: {})
+ */
+public class FetchDiagnostics implements FetchSubPhase {
     private final static boolean DEBUG=false;
 
     @Override
@@ -50,8 +54,8 @@ public class FetchDocValues implements FetchSubPhase {
         try {
             if (DEBUG) System.out.println("HIT execute1");
             
-            SearchParmDocValues x = (SearchParmDocValues)context.getSearchExt("_bm");
-            if (x==null || !x.docvalues) return;
+            SearchParms x = (SearchParms)context.getSearchExt("_bm");
+            if (x==null || !x.diagnostics) return;
             if (context.storedFieldsContext() != null && context.storedFieldsContext().fetchFields() == false) {
                 return ;
             }
@@ -106,14 +110,13 @@ public class FetchDocValues implements FetchSubPhase {
             dst.put(field.name(), "error: " + x);
             return;
         }
-        //SortedSetDVBytesAtomicFieldData
-        //ParentChildIndexFieldData
+
         AtomicFieldData dv = fd.load(hitContext.readerContext());
         TypeHandler typeHandler = TypeHandler.create(fieldType);
         if (dv != null) {
             int reldoc = hitContext.docId();
             if (reldoc < 0) {
-                dst.put(field.name(), String.format("neg reldoc=%d docid=%d, base=%d", reldoc, hitContext.docId() , hitContext.readerContext().docBase));
+                dst.put(field.name(), String.format("negative reldoc=%d docid=%d, base=%d", reldoc, hitContext.docId() , hitContext.readerContext().docBase));
                 return;
             }
             if (DEBUG) System.out.println("reldoc=" + reldoc);
