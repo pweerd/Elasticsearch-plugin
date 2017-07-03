@@ -36,7 +36,7 @@ public class ActionDefinition extends NodeActionDefinitionBase {
     }
 
    private ActionDefinition() {
-      super("cache/dump", true);
+      super("cache/dump", false);
    }
 
     @Override

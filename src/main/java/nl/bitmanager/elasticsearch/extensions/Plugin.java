@@ -126,8 +126,8 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
 
     @Override
     public List<RestHandler> getRestHandlers(Settings settings, RestController restController, ClusterSettings clusterSettings,
-            IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
-            IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
+                                             IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
+                                             IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
         ArrayList<RestHandler> ret = new ArrayList<RestHandler>(4);
         ret.add (new nl.bitmanager.elasticsearch.extensions.version.VersionRestAction(settings, restController));
         ret.add (new nl.bitmanager.elasticsearch.extensions.help.HelpRestAction(settings, restController));
@@ -136,7 +136,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         ret.add (new nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpRestAction(settings, restController));
         return ret;
     }
-    
+
     @Override
     public Map<String, Mapper.TypeParser> getMappers() {
         return typeParsers;
@@ -167,8 +167,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     @Override
     public List<FetchSubPhase> getFetchSubPhases(FetchPhaseConstructionContext context) {
         List<FetchSubPhase> ret = new ArrayList<FetchSubPhase>(1);
-        FetchSubPhase x = new FetchDiagnostics ();
-        ret.add (x);
+        ret.add (new FetchDiagnostics ());
         return ret;
     }
     

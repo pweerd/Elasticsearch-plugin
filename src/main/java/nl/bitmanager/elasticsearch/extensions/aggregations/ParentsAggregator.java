@@ -317,7 +317,7 @@ public class ParentsAggregator extends SingleBucketAggregator {
         //If needed, do a last scan through the highest level parents to match the ordinals and output the undupped buckets
         if (needParentDocs) {
             Weight w = typeWeights[lvl];
-            /*if (ParentsAggregatorBuilder.DEBUG)*/ System.out.printf("-- Handling parent=%s\n", types[lvl]);
+            if (ParentsAggregatorBuilder.DEBUG) System.out.printf("-- Mapping parent=%s\n", types[lvl]);
             
             for (LeafReaderContext ctx : indexReader.leaves()) {
                 Scorer parentScorer = w.scorer(ctx);
