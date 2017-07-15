@@ -169,8 +169,9 @@ Following extra parameters are supported at this url:
 Parameter | Default  | Meaning  
 :------------- | :---- | :-----
 index_expr     |       | Limits the output to indices that match this regex
-sort_query     | false | Sort the output on query.
+sort           | size  | Sort the output on query or size.
 type           | query | Type of the cache (request or query)
+dump_raw       | false | Dumps the raw extracted values from where the index is calculated
 
 [Back to the top](#bitmanagers-elasticsearch-plugin)
 

@@ -40,11 +40,13 @@ import org.elasticsearch.rest.RestRequest;
 
 public class CacheDumpTransportItem extends TransportItemBase {
     public enum CacheType {Request, Query};
+    public enum SortType {Query, Size};
     private Map<String, Map<String, CacheInfo>> indexCacheMap;
     private Set<String> indexSet;
     private String indexExpr;
     private RegexReplace replacer;
-    private boolean sortQuery;
+    private SortType sort;
+    public boolean dumpRaw;
     String errorMsg;
     public CacheType cacheType;
 
@@ -55,22 +57,32 @@ public class CacheDumpTransportItem extends TransportItemBase {
     public CacheDumpTransportItem(RestRequest req) {
         indexExpr = req.param("index_expr");
         
-        boolean def = req.hasParam("sort_query");
-        if (def) def = req.paramAsBoolean("sort_query", def);
-        sortQuery = def;
+        String sortType = req.param("sort", "size").toLowerCase();
+        if (sortType==null || sortType.equals("size")) 
+            sort = SortType.Size;
+        else if (sortType.equals("query")) 
+            sort = SortType.Query;
+        else throw new RuntimeException ("Unsupported value for sort: [" + sortType + "]. Valid: query, size.");
+
+        dumpRaw = req.paramAsBoolean("dump_raw", false);
         String type=req.param("type", "query").toLowerCase();
-        if (type.equals("request"))
+        if (type.equals("request")) {
             cacheType = CacheType.Request;
-        else if (type.equals("query"))
+            if (indexExpr == null) indexExpr = "([^ ]+ [^ ]+ )/$1";
+        } else if (type.equals("query")) {
             cacheType = CacheType.Query;
-        else throw new RuntimeException ("Unsupported value for type: [" + type + "]. Valid: query, request.");
+            if (indexExpr == null) indexExpr = "//indices//(.*)//\\d*//index/$1";
+        }  else throw new RuntimeException ("Unsupported value for type: [" + type + "]. Valid: query, request.");
+
+        if ("null".equals(indexExpr) || (indexExpr != null && indexExpr.length()==0)) indexExpr = null;
     }
     
     public CacheDumpTransportItem(NodeRequest req, String initError) {
         this();
         CacheDumpTransportItem other = (CacheDumpTransportItem)req.getTransportItem();
         indexExpr = other.indexExpr;
-        sortQuery = other.sortQuery;
+        sort = other.sort;
+        dumpRaw = other.dumpRaw;
         errorMsg  = initError;
         cacheType = other.cacheType;
     }
@@ -91,14 +103,15 @@ public class CacheDumpTransportItem extends TransportItemBase {
     
     @Override
     public String toString () {
-        return String.format("Transportitem: expr=%s, sortq=%s, type=%s,  id=%s", this.indexExpr, this.sortQuery, cacheType, creationId );
+        return String.format("Transportitem: expr=%s, sortq=%s, type=%s,  id=%s", this.indexExpr, this.sort, cacheType, creationId );
     }
     @Override
     public void readFrom(StreamInput in) throws IOException {
         cacheType = CacheType.values()[in.readByte()];
+        sort = SortType.values()[in.readByte()];
         errorMsg = readStr (in);
         indexExpr = readStr (in);
-        sortQuery = in.readBoolean();
+        dumpRaw = in.readBoolean();
 
         indexSet = readSet (in);
         int N = in.readInt();
@@ -121,9 +134,10 @@ public class CacheDumpTransportItem extends TransportItemBase {
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         out.writeByte((byte)cacheType.ordinal());
+        out.writeByte((byte)sort.ordinal());
         writeStr(out, errorMsg);
         writeStr(out, indexExpr);
-        out.writeBoolean(sortQuery);
+        out.writeBoolean(dumpRaw);
 
         writeSet (out, indexSet);
         int N = indexCacheMap==null ? 0 : indexCacheMap.size();
@@ -150,7 +164,8 @@ public class CacheDumpTransportItem extends TransportItemBase {
         builder.startObject("request");
         builder.field("type", cacheType.toString());
         builder.field("index_expr", indexExpr);
-        builder.field("sort_query", sortQuery);
+        builder.field("sort", sort);
+        builder.field("dump_raw", dumpRaw);
         builder.endObject();
         builder.startArray("index_caches");
         if (indexCacheMap!=null) {
@@ -158,7 +173,7 @@ public class CacheDumpTransportItem extends TransportItemBase {
                 builder.startObject();
                 builder.field("index", kvp.getKey());
                 builder.startArray("caches");
-                if (sortQuery) {
+                if (sort==SortType.Query) {
                     for (Entry<String, CacheInfo> kvp2: kvp.getValue().entrySet()) {
                         kvp2.getValue().toXContent(builder);
                     }
@@ -177,8 +192,8 @@ public class CacheDumpTransportItem extends TransportItemBase {
         builder.endArray();
 
 
-        builder.startArray("index_keys");
-        if (indexSet!=null) {
+        builder.startArray("raw_keys");
+        if (dumpRaw && indexSet!=null) {
             for (String x: indexSet) {
                 builder.value(x);
             }

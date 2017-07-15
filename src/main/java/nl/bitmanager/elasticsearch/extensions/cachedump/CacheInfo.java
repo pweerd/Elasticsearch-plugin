@@ -41,6 +41,10 @@ public class CacheInfo {
         this.query = query.toString();
         this.ramBytesUsed = docidSet.ramBytesUsed();
     }
+    public CacheInfo (String query, long bytesUsed) {
+        this.query = query;
+        this.ramBytesUsed = bytesUsed;
+    }
     
     public CacheInfo(StreamInput in) throws IOException {
         this.query = TransportItemBase.readStr (in);

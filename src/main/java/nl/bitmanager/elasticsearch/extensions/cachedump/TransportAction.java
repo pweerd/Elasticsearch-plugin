@@ -25,7 +25,6 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -54,7 +53,6 @@ import org.elasticsearch.transport.TransportService;
 
 import nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpTransportItem.CacheType;
 import nl.bitmanager.elasticsearch.support.RegexReplace;
-import nl.bitmanager.elasticsearch.support.Utils;
 import nl.bitmanager.elasticsearch.transport.NodeRequest;
 import nl.bitmanager.elasticsearch.transport.NodeTransportActionBase;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
@@ -144,17 +142,70 @@ public class TransportAction extends NodeTransportActionBase {
             IndicesRequestCache requestCache = (IndicesRequestCache) getField(indicesService, "indicesRequestCache");
             Cache lruCache = (Cache) getField(requestCache, "cache");
 
-            System.out.println("Dumping request cache");
-            Iterator keys = lruCache.keys().iterator();
-            for (Object v : lruCache.values()) {
-                Object k = keys.next();
-                System.out.printf("-- key=%s (%s)\n", getField(k, "entity"), Utils.getTrimmedClass(k));
-                System.out.printf("-- key=%s\n", parseKey((BytesReference) getField(k, "value")));
-                System.out.printf("-- key=%s\n", getNumBytes(k));
+            Map<String, Map<String, CacheInfo>> indexCacheMap = new HashMap<String, Map<String, CacheInfo>>();
+            Set<String> indexSet = new HashSet<String>();
 
-                System.out.printf("-- val=%s (%s)\n", v, Utils.getTrimmedClass(v));
-                System.out.printf("-- val=%s\n", getNumBytes(k));
+            final RegexReplace indexReplacer = req.getIndexReplacer();
+            final boolean dumpRaw = req.dumpRaw;
+            for (Object key: lruCache.keys()) {
+                Object v = lruCache.get(key);
+                if (v==null) continue;
+                
+                long bytes = (v instanceof BytesReference) ? ((BytesReference)v).ramBytesUsed() : 0;
+                String q = parseKey((BytesReference) getField(key, "value"));
+                if (dumpRaw) indexSet.add(q);
+                
+                String index;
+                if (indexReplacer==null) 
+                    index = "_ALL";
+                else {
+                    index = indexReplacer.extract(q);
+                    if (index == null)
+                        index = "?";
+                    else {
+                        int idx = q.indexOf(index) + index.length();
+                        index = index.trim();
+                        q = q.substring(idx);
+                    }
+                }
+                    
+                CacheInfo cacheInfo = new CacheInfo (q, bytes);
+                
+                Map<String, CacheInfo> statsPerQuery = indexCacheMap.get(index);
+                if (statsPerQuery == null) {
+                    statsPerQuery = new HashMap<String, CacheInfo>();
+                    indexCacheMap.put(index, statsPerQuery);
+                }
+                
+                CacheInfo existing = statsPerQuery.get(q);
+                if (existing != null) {
+                    existing.combine(cacheInfo);
+                    continue;
+                }
+                statsPerQuery.put(cacheInfo.query, cacheInfo);
             }
+            req.setCacheInfo(indexSet, indexCacheMap, null);
+
+//            for (Object v : lruCache.values()) {
+//                String q;
+//                long bytes;
+//                Object k = keys.next();
+//                System.out.printf("-- key=%s (%s)\n", getField(k, "entity"), Utils.getTrimmedClass(k));
+//                System.out.printf("-- key=%s\n", q=parseKey((BytesReference) getField(k, "value")));
+//                System.out.printf("-- key=%s\n", getNumBytes(k));
+//
+//                System.out.printf("-- val=%s (%s)\n", v, Utils.getTrimmedClass(v));
+//                System.out.printf("-- val=%s\n", bytes = getNumBytes(k));
+//                
+//                CacheInfo cacheInfo = new CacheInfo (q, bytes);
+//                int idx = q.indexOf(' ');
+//                int idx2 = q.indexOf(' ',  idx+1);
+//                if (idx2 > 0) idx = idx2;
+//                String index = q.substring(0,  idx<0 ? q.length() : idx);
+//                q = q.substring(idx+1);
+//                indexSet.add(index);
+//                //indexCacheMap.put(in, arg1)
+//            }
         }
         
         private static long getNumBytes (Object a) {
@@ -200,10 +251,11 @@ public class TransportAction extends NodeTransportActionBase {
             Set<String> indexSet = new HashSet<String>();
 
             final RegexReplace indexReplacer = req.getIndexReplacer();
+            final boolean dumpRaw = req.dumpRaw;
 
             for (Entry<Object, Object> kvp : luceneInternalCache.entrySet()) {
                 String possibleDir = getDirectoryName(kvp.getKey());
-                indexSet.add(possibleDir);
+                if (dumpRaw) indexSet.add(possibleDir);
                 String index = indexReplacer == null ? "_ALL" : indexReplacer.extract(possibleDir);
 
                 Map<String, CacheInfo> statsPerQuery = indexCacheMap.get(index);
@@ -240,7 +292,7 @@ public class TransportAction extends NodeTransportActionBase {
             if (!"org.apache.lucene.index.SegmentCoreReaders".equals(clsName))
                 return "NOSEGMENTCORE[" + clsName + "]";
 
-            return getDirectoryName((Directory) getField(obj, "cfsReader"));
+            return getDirectoryName((Directory) getField(obj, "cfsReader")).replace('\\', '/');
         }
 
         public static String getDirectoryName(Directory dir) {
