@@ -46,11 +46,6 @@ import nl.bitmanager.elasticsearch.support.Utils;
  * 
  */
 public abstract class TransportItemBase implements Streamable, ToXContent {
-    public final static int VERSION_API = 1;
-    public final static int CACHEDUMP_API = 2;
-    public final static int TERMLIST_API = 3;
-    public final static int FIELDS_API = 4;
-    public final static int VIEW_API = 5;
 
     /** Help to identify where this transportitem came from */
     public final String creationId;
