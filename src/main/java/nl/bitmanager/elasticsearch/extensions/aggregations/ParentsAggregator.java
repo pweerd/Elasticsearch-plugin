@@ -27,6 +27,7 @@ import java.util.Set;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
@@ -103,6 +104,11 @@ public class ParentsAggregator extends SingleBucketAggregator {
 
     @Override
     public LeafBucketCollector getLeafCollector(LeafReaderContext ctx, final LeafBucketCollector sub) throws IOException {
+        if (needParentDocs) {
+            IndexReaderContext top = ctx;
+            while (top.parent != null) top = top.parent;
+            if (top.leaves().size() > 1) throw new RuntimeException (String.format("Aggregation [%s] with mode=maptoparent is only supported with 1 segment shards. Shard has %d segments.", ParentsAggregatorBuilder.NAME, top.leaves().size()));
+        }
         if (valuesSources[1] == null) {
             return LeafBucketCollector.NO_OP_COLLECTOR;
         }

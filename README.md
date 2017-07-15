@@ -249,6 +249,7 @@ The aggregator has 2 modi:
 This mode is the most efficient. It tries to prevent the extra step of parent mapping. The downside is that it is not guaranteed that the records that are passed to the sub-aggregators are from the top-level parents. 
 * mode=mapToParent
 This mode is somewhat less efficient because it is forced that the docs that are passed to the sub-aggregators are real top-level parents.
+MapToParent only supports shards that consists of 1 segment. That is: the shard is fully optimized.
 
 So, if you need sub aggregations, based on the parent documents, mapToParent is the option that is best. Otherwise, use mode=undup.
 The defaults are: level=1 and mode=undup.
