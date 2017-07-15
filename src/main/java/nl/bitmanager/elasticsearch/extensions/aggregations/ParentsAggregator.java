@@ -177,10 +177,8 @@ public class ParentsAggregator extends SingleBucketAggregator {
                     bitset = new FixedBitSet (maxOrd);
                     curBuckets.put(b, bitset);
                 }
-                if (!bitset.get((int)globalOrdinal)) {
-                    bitset.set ((int)globalOrdinal);
+                if (!bitset.getAndSet((int)globalOrdinal))
                     aggregator.collectBucket(sub, docId, bucket);
-                }
             }
         }
     }
