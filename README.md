@@ -211,6 +211,16 @@ discount_overlaps |  true   | Determines whether overlap tokens (Tokens with 0 p
 
 The total score is calculated as 1.0 + idf + tf, where 0<=idf<=max_idf and 0<=tf<=max_tf
 
+###Note: bug in Elasticsearch
+There is a bug in ES that prevents indices to be upgraded to a new version if a custom similarity is used.
+Elasticsearch will not even start when this problem is encountered.
+See [https://github.com/elastic/elasticsearch/issues/25350] 
+
+I see 2 possible workarounds:
+* Remove the custom similarity before upgrading, and set the similarity afterwards.
+* Copy the whole index, including the index definition from a cluster running the old version into the new cluster.
+
+
 [Back to the top](#bitmanagers-elasticsearch-plugin)
 
 
