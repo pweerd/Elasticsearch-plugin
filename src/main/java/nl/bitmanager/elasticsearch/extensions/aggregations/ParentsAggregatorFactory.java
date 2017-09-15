@@ -31,21 +31,20 @@ import org.elasticsearch.search.aggregations.AggregatorFactory;
 import org.elasticsearch.search.aggregations.InternalAggregation;
 import org.elasticsearch.search.aggregations.NonCollectingAggregator;
 import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
-import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.ParentChild;
+import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.WithOrdinals;
 import org.elasticsearch.search.aggregations.support.ValuesSourceConfig;
 import org.elasticsearch.search.internal.SearchContext;
 
 import nl.bitmanager.elasticsearch.extensions.aggregations.ParentsAggregatorBuilder.AggregatorMode;
 
-//fixme
 public class ParentsAggregatorFactory extends AggregatorFactory<ParentsAggregatorFactory> {
     public final String types[];
     public final Query typeFilters[];
-    public final ValuesSourceConfig<ParentChild> valuesSourceConfigs[];
+    public final ValuesSourceConfig<WithOrdinals> valuesSourceConfigs[];
     public final int levels;
     public final AggregatorMode mode;
 
-    public ParentsAggregatorFactory(ParentsAggregatorBuilder bldr, ValuesSourceConfig<ParentChild> valuesSourceConfigs[] 
+    public ParentsAggregatorFactory(ParentsAggregatorBuilder bldr, ValuesSourceConfig<WithOrdinals> valuesSourceConfigs[] 
             , SearchContext context, AggregatorFactory<?> parent, Builder subFactoriesBuilder
             , Map<String, Object> metaData) throws IOException {
         super(bldr.getName(), context, parent, subFactoriesBuilder, metaData);
@@ -61,7 +60,7 @@ public class ParentsAggregatorFactory extends AggregatorFactory<ParentsAggregato
     public Aggregator createInternal(Aggregator parent, boolean collectsFromSingleBucket,
             List<PipelineAggregator> pipelineAggregators, Map<String, Object> metaData) throws IOException {
         
-        ParentChild valuesSources[] = new ParentChild[levels+1];
+        WithOrdinals valuesSources[] = new WithOrdinals[levels+1];
         QueryShardContext shardCtx = context.getQueryShardContext();
         for (int i=1; i<=levels; i++) {
             valuesSources[i] = valuesSourceConfigs[i].toValuesSource(shardCtx);

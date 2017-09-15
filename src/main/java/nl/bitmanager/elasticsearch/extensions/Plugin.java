@@ -106,18 +106,20 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
 
     @Override
     public void onIndexModule(IndexModule indexModule) {
+        logger.info("Register bounded_similarity");
         indexModule.addSimilarity("bounded_similarity",
                 (name, settings) -> new BoundedSimilarity.Provider(name, settings));
     }
 
     @Override
     public Map<String, AnalysisProvider<TokenFilterFactory>> getTokenFilters() {
+        logger.info("Register tokenFilters");
         return TokenFilterProvider.allFilters;
     }
 
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
-        logger.info("returning 4 transport actions");
+        logger.info("Register 4 transport actions.");
         return Arrays.asList(nl.bitmanager.elasticsearch.extensions.version.ActionDefinition.HANDLER,
                 nl.bitmanager.elasticsearch.extensions.view.ActionDefinition.HANDLER,
                 nl.bitmanager.elasticsearch.extensions.termlist.ActionDefinition.HANDLER,
@@ -128,6 +130,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     public List<RestHandler> getRestHandlers(Settings settings, RestController restController, ClusterSettings clusterSettings,
                                              IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
                                              IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
+        logger.info("Register 5 rest actions.");
         ArrayList<RestHandler> ret = new ArrayList<RestHandler>(4);
         ret.add (new nl.bitmanager.elasticsearch.extensions.version.VersionRestAction(settings, restController));
         ret.add (new nl.bitmanager.elasticsearch.extensions.help.HelpRestAction(settings, restController));
@@ -157,6 +160,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     
     @Override
     public List<QuerySpec<?>> getQueries() {
+        logger.info("Register 1 query.");
         List<QuerySpec<?>> ret = new ArrayList<QuerySpec<?>>(1);
         QuerySpec<?> x = new QuerySpec<>(MatchDeletedQuery.NAME, MatchDeletedQueryBuilder::new, MatchDeletedQueryBuilder::fromXContent);
         ret.add (x);
@@ -166,6 +170,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     
     @Override
     public List<FetchSubPhase> getFetchSubPhases(FetchPhaseConstructionContext context) {
+        logger.info("Register 1 fetch-phase.");
         List<FetchSubPhase> ret = new ArrayList<FetchSubPhase>(1);
         ret.add (new FetchDiagnostics ());
         return ret;
@@ -173,6 +178,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     
     @Override
     public List<SearchExtSpec<?>> getSearchExts() {
+        logger.info("Register 1 search ext.");
         List<SearchExtSpec<?>> ret = new ArrayList<SearchExtSpec<?>>(1);
         ret.add(SearchParms.createSpec());
         return ret;
@@ -182,6 +188,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     
     @Override
     public List<AggregationSpec> getAggregations() {
+        logger.info("Register 1 aggregations.");
         List<AggregationSpec> ret = new ArrayList<AggregationSpec>(1);
         ret.add (ParentsAggregatorBuilder.createAggregationSpec());
         return ret;

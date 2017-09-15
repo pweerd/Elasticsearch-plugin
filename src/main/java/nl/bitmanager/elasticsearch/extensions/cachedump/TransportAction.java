@@ -30,8 +30,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.lucene.search.DocIdSet;
+import org.apache.lucene.search.LRUQueryCache;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.XLRUQueryCache;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Accountable;
@@ -240,7 +240,7 @@ public class TransportAction extends NodeTransportActionBase {
         private void processQueryCache() throws Exception {
             System.out.println("Running processQueryCache");
             IndicesQueryCache indicesQueryCache = indicesService.getIndicesQueryCache();
-            XLRUQueryCache lruCache = (XLRUQueryCache) getField(indicesQueryCache, "cache");
+            LRUQueryCache lruCache = (LRUQueryCache) getField(indicesQueryCache, "cache");
             shardKeyMap = (ShardCoreKeyMap) getField(indicesQueryCache, "shardKeyMap");
             luceneInternalCache = lruCache == null ? null : (Map<Object, Object>) getField(lruCache, "cache");
             if (lruCache == null)

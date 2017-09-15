@@ -29,7 +29,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Query;
@@ -45,7 +45,7 @@ import org.elasticsearch.search.aggregations.InternalAggregation;
 import org.elasticsearch.search.aggregations.LeafBucketCollector;
 import org.elasticsearch.search.aggregations.bucket.SingleBucketAggregator;
 import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
-import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.ParentChild;
+import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.WithOrdinals;
 import org.elasticsearch.search.internal.SearchContext;
 
 import nl.bitmanager.elasticsearch.extensions.aggregations.ParentsAggregatorBuilder.AggregatorMode;
@@ -67,7 +67,7 @@ public class ParentsAggregator extends SingleBucketAggregator {
     private final String types[];
     private final Query typeFilters[];
     private final Weight typeWeights[];
-    private final ParentChild valuesSources[];
+    private final WithOrdinals valuesSources[];
     private final int levels;
     public final AggregatorMode mode;
     private final boolean needParentDocs;
@@ -78,7 +78,7 @@ public class ParentsAggregator extends SingleBucketAggregator {
 
     public ParentsAggregator(ParentsAggregatorFactory factory, String name, AggregatorFactories factories, 
             SearchContext context, Aggregator parent, List<PipelineAggregator> pipelineAggregators, Map<String, Object> metaData,
-            ParentChild[] valuesSources)
+            WithOrdinals[] valuesSources)
             throws IOException {
         super(name, factories, context, parent, pipelineAggregators, metaData);
         this.types = factory.types;
@@ -113,7 +113,7 @@ public class ParentsAggregator extends SingleBucketAggregator {
             return LeafBucketCollector.NO_OP_COLLECTOR;
         }
 
-        final SortedDocValues globalOrdinals = valuesSources[1].globalOrdinalsValues(types[1], ctx);
+        final SortedSetDocValues globalOrdinals = valuesSources[1].globalOrdinalsValues(ctx);
         assert globalOrdinals != null;
         final Bits childDocs = context.bitsetFilterCache().getBitSetProducer(typeFilters[0]).getBitSet (ctx);
 
@@ -129,25 +129,26 @@ public class ParentsAggregator extends SingleBucketAggregator {
         final protected static boolean DEBUG=false;
         
         final protected Bits childDocs;
-        final protected SortedDocValues globalOrdinals;
+        final protected SortedSetDocValues globalOrdinals;
         final protected HashMap<Long,FixedBitSet> curBuckets;
         final protected ParentsAggregator aggregator;
 
         final protected int maxOrd;
         
-        public NonCollectingBucketCollector (ParentsAggregator aggregator, SortedDocValues globalOrdinals, Bits childDocs) {
+        public NonCollectingBucketCollector (ParentsAggregator aggregator, SortedSetDocValues globalOrdinals, Bits childDocs) {
             this.childDocs = childDocs;
             this.globalOrdinals = globalOrdinals;
             this.aggregator = aggregator;
             this.curBuckets = aggregator.curBuckets;
-            this.maxOrd = 1+globalOrdinals.getValueCount();
+            this.maxOrd = (int) (1+globalOrdinals.getValueCount());
         }
         
         @Override
         public void collect(int docId, long bucket) throws IOException {
             if (DEBUG) System.out.printf("-- NC: doc %d. IsChild=%s bucket=%d\n", docId, childDocs.get(docId), bucket);
             if (childDocs.get(docId)) {
-                long globalOrdinal = globalOrdinals.getOrd(docId);
+                globalOrdinals.setDocument(docId);
+                long globalOrdinal = globalOrdinals.nextOrd();
                 if (DEBUG) System.out.printf("-- NC: doc %s -> %d\n", docId, globalOrdinal);
                 Long b = bucket;
                 FixedBitSet bitset = curBuckets.get(b);
@@ -166,7 +167,7 @@ public class ParentsAggregator extends SingleBucketAggregator {
      */
     protected static class CollectingBucketCollector extends NonCollectingBucketCollector {
         protected final LeafBucketCollector sub;
-        public CollectingBucketCollector (ParentsAggregator aggregator, SortedDocValues globalOrdinals, Bits childDocs, LeafBucketCollector sub) {
+        public CollectingBucketCollector (ParentsAggregator aggregator, SortedSetDocValues globalOrdinals, Bits childDocs, LeafBucketCollector sub) {
             super (aggregator, globalOrdinals, childDocs);
             this.sub = sub;
         }
@@ -175,7 +176,8 @@ public class ParentsAggregator extends SingleBucketAggregator {
         public void collect(int docId, long bucket) throws IOException {
             if (DEBUG) System.out.printf("-- C: doc %d. IsChild=%s bucket=%d\n", docId, childDocs.get(docId), bucket);
             if (childDocs.get(docId)) {
-                long globalOrdinal = globalOrdinals.getOrd(docId);
+                globalOrdinals.setDocument(docId);
+                long globalOrdinal = globalOrdinals.nextOrd();
                 if (DEBUG) System.out.printf("-- C: doc %s -> %d\n", docId, globalOrdinal);
                 Long b = bucket;
                 FixedBitSet bitset = curBuckets.get(b);
@@ -267,8 +269,8 @@ public class ParentsAggregator extends SingleBucketAggregator {
                     sub = collectableSubAggregators.getLeafCollector(ctx);
                     sub.setScorer(new ConstantScoreScorer(null, 1, iter));
                 }
-                final SortedDocValues globalOrdinals = valuesSources[lvl].globalOrdinalsValues(types[lvl], ctx);
-                final SortedDocValues globalOrdinalsParent = valuesSources[lvl+1].globalOrdinalsValues(types[lvl+1], ctx);
+                final SortedSetDocValues globalOrdinals = valuesSources[lvl].globalOrdinalsValues(ctx);
+                final SortedSetDocValues globalOrdinalsParent = valuesSources[lvl+1].globalOrdinalsValues(ctx);
 
                 final Bits liveDocs = ctx.reader().getLiveDocs();
                 while (true) {
@@ -278,9 +280,11 @@ public class ParentsAggregator extends SingleBucketAggregator {
                         continue;
                     }
 
-                    long globalOrdinal = globalOrdinals.getOrd(docId); 
+                    globalOrdinals.setDocument(docId);
+                    long globalOrdinal = globalOrdinals.nextOrd();
                     if (globalOrdinal < 0) continue;
-                    long globalOrdinalParent = globalOrdinalsParent.getOrd(docId); 
+                    globalOrdinalsParent.setDocument(docId);
+                    long globalOrdinalParent = globalOrdinalsParent.nextOrd();
                     if (globalOrdinalParent < 0) continue;
                     
                     FixedBitSet bucketBits = bucketsPerOrd.get(globalOrdinal);
@@ -332,7 +336,7 @@ public class ParentsAggregator extends SingleBucketAggregator {
 
                 LeafBucketCollector sub = collectableSubAggregators.getLeafCollector(ctx);
                 sub.setScorer(new ConstantScoreScorer(null, 1, iter));
-                final SortedDocValues globalOrdinals = valuesSources[lvl].globalOrdinalsValues(types[lvl], ctx);
+                final SortedSetDocValues globalOrdinals = valuesSources[lvl].globalOrdinalsValues(ctx);
 
                 final Bits liveDocs = ctx.reader().getLiveDocs();
                 while (true) {
@@ -343,7 +347,8 @@ public class ParentsAggregator extends SingleBucketAggregator {
                     }
                     //dumpDocument ("parent", ctx, docId);
 
-                    long globalOrdinal = globalOrdinals.getOrd(docId); 
+                    long globalOrdinal = globalOrdinals.nextOrd();
+                    if (globalOrdinal < 0) continue;
                     if (globalOrdinal < 0) continue;
                     
                     FixedBitSet bucketBits = bucketsPerOrd.get(globalOrdinal);

@@ -28,7 +28,7 @@ import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentParser;
-import org.elasticsearch.index.fielddata.plain.ParentChildIndexFieldData;
+import org.elasticsearch.index.fielddata.plain.SortedSetDVOrdinalsIndexFieldData;
 import org.elasticsearch.index.mapper.DocumentMapper;
 import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.index.mapper.ParentFieldMapper;
@@ -38,7 +38,7 @@ import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregatorFactories.Builder;
 import org.elasticsearch.search.aggregations.AggregatorFactory;
 import org.elasticsearch.search.aggregations.support.FieldContext;
-import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.ParentChild;
+import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.WithOrdinals;
 import org.elasticsearch.search.aggregations.support.ValuesSourceConfig;
 import org.elasticsearch.search.aggregations.support.ValuesSourceType;
 import org.elasticsearch.search.internal.SearchContext;
@@ -50,7 +50,7 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
     
     public final String types[];
     public final Query typeFilters[];
-    public final ValuesSourceConfig<ParentChild> valuesSourceConfigs[];
+    public final ValuesSourceConfig<WithOrdinals> valuesSourceConfigs[];
     public final int levels;
     public final AggregatorMode mode;
 
@@ -69,7 +69,7 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
     }
     
     @SuppressWarnings("unchecked")
-    protected static ValuesSourceConfig<ParentChild>[] createConfigArr(int dim) {
+    protected static ValuesSourceConfig<WithOrdinals>[] createConfigArr(int dim) {
        return new ValuesSourceConfig[dim];
     }
 
@@ -101,14 +101,14 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
     }
     
 
-    protected ValuesSourceConfig<ParentChild>[] resolveConfigs (SearchContext context) {
-        ValuesSourceConfig<ParentChild>[] configs = createConfigArr(levels+1);
+    protected ValuesSourceConfig<WithOrdinals>[] resolveConfigs (SearchContext context) {
+        ValuesSourceConfig<WithOrdinals>[] configs = createConfigArr(levels+1);
         MapperService mapperService = context.mapperService();
         for (int lvl=0; lvl <= levels; lvl++) {
             DocumentMapper docMapper = mapperService.documentMapper(types[lvl]);
             if (docMapper == null) 
                 throw new IllegalArgumentException(String.format("[%s]: type [%s] is not defined.", NAME, types[lvl]));
-            typeFilters[lvl] = docMapper.typeFilter();
+            typeFilters[lvl] = docMapper.typeFilter(context.getQueryShardContext());
             
             if (lvl >= levels) continue;
             
@@ -119,7 +119,7 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
             
             types[lvl+1] = parentFieldMapper.type();
             
-            ParentChildIndexFieldData parentChildIndexFieldData = context.fieldData().getForField(parentFieldMapper.fieldType());
+            SortedSetDVOrdinalsIndexFieldData parentChildIndexFieldData = context.fieldData().getForField(parentFieldMapper.fieldType());
             configs[lvl+1] = new ValuesSourceConfig<>(ValuesSourceType.BYTES);
             configs[lvl+1].fieldContext(new FieldContext(parentFieldMapper.fieldType().name(), parentChildIndexFieldData,
                     parentFieldMapper.fieldType()));
@@ -189,7 +189,7 @@ public class ParentsAggregatorBuilder extends AbstractAggregationBuilder<Parents
 
     @Override
     protected AggregatorFactory<?> doBuild(SearchContext context, AggregatorFactory<?> parent, Builder subfactoriesBuilder) throws IOException {
-        ValuesSourceConfig<ParentChild>[] configs = resolveConfigs (context);
+        ValuesSourceConfig<WithOrdinals>[] configs = resolveConfigs (context);
         return new ParentsAggregatorFactory(this, configs, context, parent, subfactoriesBuilder, metaData);
     }
 

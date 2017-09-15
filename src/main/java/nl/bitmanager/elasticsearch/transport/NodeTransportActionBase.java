@@ -97,9 +97,4 @@ public abstract class NodeTransportActionBase
         return new NodeResponse(definition.createTransportItem());
     }
 
-    @Override
-    protected boolean accumulateExceptions() {
-        return false;
-    }
-
 }
