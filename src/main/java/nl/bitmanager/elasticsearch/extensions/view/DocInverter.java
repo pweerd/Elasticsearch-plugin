@@ -239,8 +239,12 @@ public class DocInverter {
             return;
         }
         AtomicFieldData dv = fd.load(leafCtx);
-        json.field("dv_class", Utils.getClass(dv));
-        json.field("th_class", Utils.getClass(typeHandler));
+        if (this.outputLevel > 0) {
+            json.field("ft_class", Utils.getClass(fieldType));
+            json.field("fd_class", Utils.getClass(fd));
+            json.field("dv_class", Utils.getClass(dv));
+            json.field("th_class", Utils.getClass(typeHandler));
+        }
         if (dv != null) {
             typeHandler.exportDocValues(json, dv, docId);
         }
