@@ -27,22 +27,22 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 
+import nl.bitmanager.elasticsearch.extensions.RestControllerWrapper;
 import nl.bitmanager.elasticsearch.transport.ShardBroadcastRequest;
 import nl.bitmanager.elasticsearch.transport.ShardBroadcastResponse;
 
 public class TermlistRestAction extends BaseRestHandler {
 
     @Inject
-    public TermlistRestAction(Settings settings, RestController controller) {
+    public TermlistRestAction(Settings settings, RestControllerWrapper c) {
         super(settings);
-        controller.registerHandler(GET, "/_termlist", this);
-        controller.registerHandler(GET, "/{index}/_termlist", this);
-        controller.registerHandler(GET, "/_termlist/{field}", this);
-        controller.registerHandler(GET, "/{index}/_termlist/{field}", this);
+        c.registerHandler(GET, "/_termlist", this);
+        c.registerHandler(GET, "/{index}/_termlist", this);
+        c.registerHandler(GET, "/_termlist/{field}", this);
+        c.registerHandler(GET, "/{index}/_termlist/{field}", this);
     }
 
     @Override
@@ -58,4 +58,9 @@ public class TermlistRestAction extends BaseRestHandler {
         }
     }
 
+
+    @Override
+    public String getName() {
+        return ActionDefinition.INSTANCE.name();
+    }
 }

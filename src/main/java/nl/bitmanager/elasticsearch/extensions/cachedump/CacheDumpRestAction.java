@@ -27,10 +27,10 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 
+import nl.bitmanager.elasticsearch.extensions.RestControllerWrapper;
 import nl.bitmanager.elasticsearch.transport.NodeBroadcastRequest;
 import nl.bitmanager.elasticsearch.transport.NodeBroadcastResponse;
 
@@ -38,9 +38,9 @@ import nl.bitmanager.elasticsearch.transport.NodeBroadcastResponse;
 public class CacheDumpRestAction extends BaseRestHandler {
 
    @Inject
-   public CacheDumpRestAction(Settings settings, RestController controller) {
+   public CacheDumpRestAction(Settings settings, RestControllerWrapper c) {
       super(settings);
-      controller.registerHandler(GET, "/_bm/cache/dump", this);
+      c.registerHandler(GET, "/_bm/cache/dump", this);
    }
 
    @Override
@@ -60,5 +60,11 @@ public class CacheDumpRestAction extends BaseRestHandler {
    public boolean canTripCircuitBreaker() {
        return false;
    }
+
+    @Override
+    public String getName() {
+        // TODO Auto-generated method stub
+        return "CACHE_DUMP";
+    }
 
 }

@@ -27,12 +27,13 @@ import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.BitSet;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
 /** 
- * Holds raw cache information out of the LruCache
+ * Holds raw cache information out of data usage in an Elasticsearch cache
  */
 public class CacheInfo {
     public final String query;
@@ -40,6 +41,10 @@ public class CacheInfo {
     public CacheInfo (Query query, DocIdSet docidSet) {
         this.query = query.toString();
         this.ramBytesUsed = docidSet.ramBytesUsed();
+    }
+    public CacheInfo (Query query, BitSet bitset) {
+        this.query = query.toString();
+        this.ramBytesUsed = (bitset.length() + 64) / 8;
     }
     public CacheInfo (String query, long bytesUsed) {
         this.query = query;

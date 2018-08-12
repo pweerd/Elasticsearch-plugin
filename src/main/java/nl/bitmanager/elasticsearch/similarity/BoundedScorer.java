@@ -19,6 +19,8 @@
 
 package nl.bitmanager.elasticsearch.similarity;
 
+import java.io.IOException;
+
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.BytesRef;
@@ -27,9 +29,10 @@ public class BoundedScorer extends SimScorer {
     public final BoundedSimilaritySettings settings;
     public final BoundedWeight weight;
 
-    public final float maxTf;
-    public final float biasTf;
-    public final int  forceTf;
+    protected final float maxTf;
+    protected final float biasTf;
+    protected final int  forceTf;
+    
     
     private final float _score;
 
@@ -41,17 +44,17 @@ public class BoundedScorer extends SimScorer {
         maxTf = settings.maxTf;
         biasTf = settings.biasTf;
         forceTf = settings.forceTf;
-        _score = weight.normScore * weight.idf;
+        _score = weight.queryBoost * weight.idf;
     }
 
     @Override
-    public float score(int doc, float freq) {
+    public float score(int doc, float freq) throws IOException {
         return _score;
     }
 
     private static final Explanation fixed = Explanation.match(0.0f, "tf-boost (norms omitted)", BoundedWeight.EMPTY_EXPLAIN_LIST);
     @Override
-    public Explanation explain(int doc, Explanation freq) {
+    public Explanation explain(int doc, Explanation freq) throws IOException {
         return weight.createExplain(doc, fixed);
     }
 

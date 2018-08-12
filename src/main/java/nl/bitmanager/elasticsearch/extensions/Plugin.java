@@ -21,10 +21,12 @@ package nl.bitmanager.elasticsearch.extensions;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.apache.logging.log4j.Logger;
@@ -52,9 +54,10 @@ import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.search.fetch.FetchSubPhase;
 
 import nl.bitmanager.elasticsearch.analyses.TokenFilterProvider;
-import nl.bitmanager.elasticsearch.extensions.aggregations.ParentsAggregatorBuilder;
-import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQuery;
+import nl.bitmanager.elasticsearch.extensions.aggregations.UndupByParentsAggregatorBuilder;
+import nl.bitmanager.elasticsearch.extensions.queries.AllowNestedQueryBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQueryBuilder;
+import nl.bitmanager.elasticsearch.extensions.queries.MatchNestedQueryBuilder;
 import nl.bitmanager.elasticsearch.mappers.TextFieldWithDocvaluesMapper;
 import nl.bitmanager.elasticsearch.search.FetchDiagnostics;
 import nl.bitmanager.elasticsearch.search.SearchParms;
@@ -68,6 +71,16 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     public static final Logger logger = Loggers.getLogger("bitmanager-ext");
 
     public static Settings ESSettings;
+
+//    public void onModule(SearchModule m) {
+//        logger.info("onModule(SearchModule m)");
+//        List<org.elasticsearch.common.xcontent.NamedXContentRegistry.Entry> list = m.getNamedXContents();
+//        for (org.elasticsearch.common.xcontent.NamedXContentRegistry.Entry x: list) {
+//            logger.info("-- " + x.name + ", cat=" + x.categoryClass.getName() + ", tos=" + x);
+//            
+//        }
+//
+//    }
 
     @Inject
     public Plugin(Settings settings) {
@@ -108,40 +121,45 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     public void onIndexModule(IndexModule indexModule) {
         logger.info("Register bounded_similarity");
         indexModule.addSimilarity("bounded_similarity",
-                (name, settings) -> new BoundedSimilarity.Provider(name, settings));
+                (name, providerSettings, indexSettings) -> new BoundedSimilarity.Provider(name, providerSettings, indexSettings));
     }
 
     @Override
     public Map<String, AnalysisProvider<TokenFilterFactory>> getTokenFilters() {
         logger.info("Register tokenFilters");
+        logRegistered (TokenFilterProvider.allFilters.keySet(), "token filters");
         return TokenFilterProvider.allFilters;
     }
 
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
-        logger.info("Register 4 transport actions.");
-        return Arrays.asList(nl.bitmanager.elasticsearch.extensions.version.ActionDefinition.HANDLER,
+        List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> ret = Arrays.asList(
+                nl.bitmanager.elasticsearch.extensions.version.ActionDefinition.HANDLER,
                 nl.bitmanager.elasticsearch.extensions.view.ActionDefinition.HANDLER,
                 nl.bitmanager.elasticsearch.extensions.termlist.ActionDefinition.HANDLER,
                 nl.bitmanager.elasticsearch.extensions.cachedump.ActionDefinition.HANDLER);
+        logRegistered (ret, "transport actions", (ActionHandler<? extends ActionRequest, ? extends ActionResponse> k)->k.getAction().name());
+        return ret;
     }
 
     @Override
     public List<RestHandler> getRestHandlers(Settings settings, RestController restController, ClusterSettings clusterSettings,
                                              IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
                                              IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
-        logger.info("Register 5 rest actions.");
-        ArrayList<RestHandler> ret = new ArrayList<RestHandler>(4);
-        ret.add (new nl.bitmanager.elasticsearch.extensions.version.VersionRestAction(settings, restController));
-        ret.add (new nl.bitmanager.elasticsearch.extensions.help.HelpRestAction(settings, restController));
-        ret.add (new nl.bitmanager.elasticsearch.extensions.view.ViewRestAction(settings, restController));
-        ret.add (new nl.bitmanager.elasticsearch.extensions.termlist.TermlistRestAction(settings, restController));
-        ret.add (new nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpRestAction(settings, restController));
+        ArrayList<RestHandler> ret = new ArrayList<RestHandler>(5);
+        RestControllerWrapper c = new RestControllerWrapper(restController);
+        ret.add (new nl.bitmanager.elasticsearch.extensions.version.VersionRestAction(settings, c));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.help.HelpRestAction(settings, c));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.view.ViewRestAction(settings, c));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.termlist.TermlistRestAction(settings, c));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpRestAction(settings, c));
+        logger.info(c.toString());
         return ret;
     }
 
     @Override
     public Map<String, Mapper.TypeParser> getMappers() {
+        logRegistered (typeParsers.keySet(), "types");
         return typeParsers;
     }
 
@@ -160,27 +178,27 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     
     @Override
     public List<QuerySpec<?>> getQueries() {
-        logger.info("Register 1 query.");
         List<QuerySpec<?>> ret = new ArrayList<QuerySpec<?>>(1);
-        QuerySpec<?> x = new QuerySpec<>(MatchDeletedQuery.NAME, MatchDeletedQueryBuilder::new, MatchDeletedQueryBuilder::fromXContent);
-        ret.add (x);
-
+        ret.add (new QuerySpec<>(MatchDeletedQueryBuilder.NAME, MatchDeletedQueryBuilder::new, MatchDeletedQueryBuilder::fromXContent));
+        ret.add (new QuerySpec<>(MatchNestedQueryBuilder.NAME, MatchNestedQueryBuilder::new, MatchNestedQueryBuilder::fromXContent));
+        ret.add (new QuerySpec<>(AllowNestedQueryBuilder.NAME, AllowNestedQueryBuilder::new, AllowNestedQueryBuilder::fromXContent));
+        logRegistered (ret, "queries", (QuerySpec<?> qs)->qs.getName().getPreferredName());
         return ret;
     }
     
     @Override
     public List<FetchSubPhase> getFetchSubPhases(FetchPhaseConstructionContext context) {
-        logger.info("Register 1 fetch-phase.");
         List<FetchSubPhase> ret = new ArrayList<FetchSubPhase>(1);
         ret.add (new FetchDiagnostics ());
+        logRegistered (ret, "fetch-phases", (FetchSubPhase k)->k.getClass().getSimpleName());
         return ret;
     }
     
     @Override
     public List<SearchExtSpec<?>> getSearchExts() {
-        logger.info("Register 1 search ext.");
         List<SearchExtSpec<?>> ret = new ArrayList<SearchExtSpec<?>>(1);
         ret.add(SearchParms.createSpec());
+        logRegistered (ret, "search-exts", (SearchExtSpec<?> k)->k.getName().getPreferredName());
         return ret;
     }
 
@@ -188,13 +206,30 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     
     @Override
     public List<AggregationSpec> getAggregations() {
-        logger.info("Register 1 aggregations.");
         List<AggregationSpec> ret = new ArrayList<AggregationSpec>(1);
-        ret.add (ParentsAggregatorBuilder.createAggregationSpec());
+        ret.add (UndupByParentsAggregatorBuilder.createAggregationSpec());
+        logRegistered (ret, "aggregations", (AggregationSpec k)->k.getName().getPreferredName());
         return ret;
     }
 
-
+    private static <T1> void logRegistered (Collection<T1> list, String what) {
+        logRegistered (list, what, (T1 t)->t.toString());
+    }
+    private static <T1> void logRegistered (Collection<T1> list, String what, Function<T1, String> dlg) {
+        boolean first = true;
+        StringBuilder sb = new StringBuilder();
+        sb.append("Register ");
+        sb.append(list.size());
+        sb.append(' ');
+        sb.append(what);
+        sb.append(": ");
+        
+        for (T1 t: list) {
+            if (first) first = false; else sb.append("; ");
+            sb.append(dlg.apply(t));
+        }
+        logger.info(sb.toString());
+    }
 
     private static final Map<String, Mapper.TypeParser> typeParsers;
     static {

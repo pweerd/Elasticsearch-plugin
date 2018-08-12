@@ -20,6 +20,7 @@
 package nl.bitmanager.elasticsearch.typehandlers;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
@@ -29,7 +30,7 @@ public abstract class TypeHandler {
     public final String typeName;
     public final boolean knowType;
 
-    public abstract Object[] docValuesToObjects(AtomicFieldData fieldData, int docid);
+    public abstract Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException;
     public abstract XContentBuilder export(XContentBuilder builder, byte[] bytes) throws IOException;
 
     public XContentBuilder export(XContentBuilder builder, String field, byte[] bytes) throws IOException {
@@ -61,38 +62,53 @@ public abstract class TypeHandler {
     }
 
     public static TypeHandler create(String type) {
-        if ("text".equals(type) || 
-                "keyword".equals(type) || 
-                "text_with_docvalues".equals(type) ||
-                "analyzed_keyword".equals(type) ||
-                "string".equals(type) || 
-                "_all".equals(type) || 
-                "_parent".equals(type) || 
-                "_routing".equals(type) || 
-                "_type".equals(type) || 
-                "_uid".equals(type) || 
-                "_field_names".equals(type))
-            return new StringHandler(type);
-        if ("bool".equals(type) || "boolean".equals(type))
-            return new BoolHandler(type);
-        if ("long".equals(type))
-            return new Int64Handler(type);
-        if ("integer".equals(type) || "short".equals(type) || "byte".equals(type))
-            return new Int32Handler(type);
-        
-        if ("float".equals(type))
-            return new Float32Handler(type);
-        if ("double".equals(type))
-            return new Float64Handler(type);
-
-        if ("geo_point".equals(type))
-            return new GeoPointHandler(type);
-
-        if ("date".equals(type))
-            return new DateHandler(type);
-        System.out.printf("Unknown type [%s]. Using ByteHandler.\n", type);
-        return new BytesHandler(type, false);
+        TypeHandler ret = _types.get(type);
+        if (ret == null)  {
+            System.out.printf("Unknown type [%s]. Using ByteHandler.\n", type);
+            ret = new BytesHandler(type, false);
+        }
+        return ret;
     }
+    
+    static HashMap<String, TypeHandler> _types;
+    static {
+        HashMap<String, TypeHandler> map = new HashMap<String, TypeHandler>(25);
+        map.put("text", new StringHandler("text"));
+        map.put("keyword", new StringHandler("keyword"));
+        map.put("text_with_docvalues", new StringHandler("text_with_docvalues"));
+        map.put("analyzed_keyword", new StringHandler("analyzed_keyword"));
+        map.put("string", new StringHandler("string"));
+        map.put("_all", new StringHandler("_all"));
+        map.put("_parent", new StringHandler("_parent"));
+        map.put("parent", new StringHandler("parent"));
+        map.put("join", new StringHandler("join"));
+        map.put("_routing", new StringHandler("_routing"));
+        map.put("_type", new StringHandler("_type"));
+        map.put("_uid", new StringHandler("_uid"));
+        map.put("_field_names", new StringHandler("_field_names"));
+        
+        map.put("bool", new BoolHandler("bool"));
+        map.put("boolean", new BoolHandler("boolean"));
+        
+        map.put("long", new Int64Handler("long"));
+        map.put("_seq_no", new Int64Handler("_seq_no"));
+        
+        map.put("integer", new Int32Handler("integer"));
+        map.put("short", new Int32Handler("short"));
+        map.put("byte", new Int32Handler("byte"));
+        
+        map.put("float", new Float32Handler("float"));
+        map.put("double", new Float64Handler("double"));
+        
+        map.put("geo_point", new GeoPointHandler("geo_point"));
+        
+        map.put("date", new DateHandler("date"));
+        
+        map.put("_id", new IDHandler("_id"));
+
+        _types = map;
+    }
+    
 
 
 }

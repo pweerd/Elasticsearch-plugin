@@ -19,6 +19,8 @@
 
 package nl.bitmanager.elasticsearch.typehandlers;
 
+import java.io.IOException;
+
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.elasticsearch.index.fielddata.AtomicNumericFieldData;
@@ -38,15 +40,15 @@ public class BoolHandler extends TypeHandlerBase {
     }
 
     @Override
-    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         AtomicNumericFieldData numData = (AtomicNumericFieldData) fieldData;
         SortedNumericDocValues dvs = numData.getLongValues();
-        dvs.setDocument(docid);
-        int N = dvs.count();
+        if (!dvs.advanceExact(docid)) return null;
+        int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {
             for (int i = 0; i < N; i++) 
-                ret[i] = (0 != dvs.valueAt(i));
+                ret[i] = (0 != dvs.nextValue());
         }
         return ret;
     }

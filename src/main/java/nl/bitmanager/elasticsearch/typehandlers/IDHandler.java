@@ -20,44 +20,50 @@
 package nl.bitmanager.elasticsearch.typehandlers;
 
 import java.io.IOException;
+import java.util.Arrays;
 
-import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
-import org.elasticsearch.index.fielddata.AtomicNumericFieldData;
-import org.elasticsearch.index.fielddata.SortedNumericDoubleValues;
+import org.elasticsearch.index.fielddata.SortedBinaryDocValues;
+import org.elasticsearch.index.mapper.Uid;
 
-public class Float64Handler extends Int64Handler {
+public class IDHandler extends SafeTypeHandler {
 
-    protected Float64Handler(String type) {
+    protected IDHandler(String type) {
         super(type);
     }
 
     @Override
     protected Object[] _bytesToObjects(byte[] bytes) {
-        Object[] ret = new Object[bytes.length / 8];
-        for (int i=0; i<ret.length; i++)
-            ret[i] = NumericUtils.sortableLongToDouble(NumericUtils.sortableBytesToLong(bytes, i*8));
-        return ret; 
+        return new Object[] {_toString(bytes)}; 
     }
-    
+
     @Override
     public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
-        AtomicNumericFieldData numData = (AtomicNumericFieldData) fieldData;
-        SortedNumericDoubleValues dvs = numData.getDoubleValues();
+        SortedBinaryDocValues dvs = fieldData.getBytesValues();
         if (!dvs.advanceExact(docid)) return null;
         int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {
             for (int i = 0; i < N; i++) 
-                ret[i] = dvs.nextValue();
+                ret[i] = _toString(dvs.nextValue());
         }
         return ret;
     }
 
     @Override
     public byte[] toBytes(String s) {
-        byte[] bytes = new byte[8];
-        NumericUtils.longToSortableBytes(NumericUtils.doubleToSortableLong(Double.parseDouble(s)), bytes, 0);
-        return bytes;
+        return Uid.encodeId(s).bytes;
+    }
+
+    protected static String _toString(byte[] bytes) {
+        return Uid.decodeId(bytes);
+    }
+    protected static String _toString(BytesRef br) {
+        byte[] bytes = br.bytes;
+        if (br.offset!=0 || br.length != bytes.length) {
+            bytes = Arrays.copyOfRange(bytes, br.offset, br.offset+br.length);
+        }
+        return _toString (bytes);
     }
 }

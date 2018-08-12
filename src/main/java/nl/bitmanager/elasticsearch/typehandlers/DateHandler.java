@@ -19,6 +19,8 @@
 
 package nl.bitmanager.elasticsearch.typehandlers;
 
+import java.io.IOException;
+
 import org.apache.lucene.util.NumericUtils;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.joda.time.DateTime;
@@ -44,7 +46,7 @@ public class DateHandler extends Int64Handler {
         return convertToDate (super._bytesToObjects(bytes));
     }
     @Override
-    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         return convertToDate (super.docValuesToObjects(fieldData, docid));
     }
 

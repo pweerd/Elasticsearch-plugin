@@ -25,16 +25,19 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexReader.CacheKey;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.LRUQueryCache;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.BitSet;
 import org.elasticsearch.SpecialPermission;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
@@ -45,13 +48,15 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.lucene.ShardCoreKeyMap;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.index.IndexService;
+import org.elasticsearch.index.cache.bitset.BitsetFilterCache;
+import org.elasticsearch.index.cache.bitset.BitsetFilterCache.Value;
 import org.elasticsearch.indices.IndicesQueryCache;
 import org.elasticsearch.indices.IndicesRequestCache;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
-import nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpTransportItem.CacheType;
 import nl.bitmanager.elasticsearch.support.RegexReplace;
 import nl.bitmanager.elasticsearch.transport.NodeRequest;
 import nl.bitmanager.elasticsearch.transport.NodeTransportActionBase;
@@ -125,10 +130,11 @@ public class TransportAction extends NodeTransportActionBase {
         public Object run() {
             System.out.println("Running cachegetter + " + req.cacheType);
             try {
-                if (req.cacheType == CacheType.Query)
-                    processQueryCache();
-                else
-                    processRequestCache();
+                switch (req.cacheType) {
+                    case Query: processQueryCache(); break;
+                    case Request: processRequestCache(); break;
+                    case Bitset: processBitsetCache(); break;
+                }
                 return null;
             } catch (Throwable th) {
                 th.printStackTrace();
@@ -138,7 +144,7 @@ public class TransportAction extends NodeTransportActionBase {
 
         @SuppressWarnings("rawtypes")
         private void processRequestCache() throws Exception {
-            System.out.println("Running processRequestCache");
+            System.out.println("Fetching REQUEST cache");
             IndicesRequestCache requestCache = (IndicesRequestCache) getField(indicesService, "indicesRequestCache");
             Cache lruCache = (Cache) getField(requestCache, "cache");
 
@@ -185,33 +191,8 @@ public class TransportAction extends NodeTransportActionBase {
                 statsPerQuery.put(cacheInfo.query, cacheInfo);
             }
             req.setCacheInfo(indexSet, indexCacheMap, null);
-
-//            for (Object v : lruCache.values()) {
-//                String q;
-//                long bytes;
-//                Object k = keys.next();
-//                System.out.printf("-- key=%s (%s)\n", getField(k, "entity"), Utils.getTrimmedClass(k));
-//                System.out.printf("-- key=%s\n", q=parseKey((BytesReference) getField(k, "value")));
-//                System.out.printf("-- key=%s\n", getNumBytes(k));
-//
-//                System.out.printf("-- val=%s (%s)\n", v, Utils.getTrimmedClass(v));
-//                System.out.printf("-- val=%s\n", bytes = getNumBytes(k));
-//                
-//                CacheInfo cacheInfo = new CacheInfo (q, bytes);
-//                int idx = q.indexOf(' ');
-//                int idx2 = q.indexOf(' ',  idx+1);
-//                if (idx2 > 0) idx = idx2;
-//                String index = q.substring(0,  idx<0 ? q.length() : idx);
-//                q = q.substring(idx+1);
-//                indexSet.add(index);
-//                //indexCacheMap.put(in, arg1)
-//            }
         }
         
-        private static long getNumBytes (Object a) {
-            return (a instanceof Accountable) ? ((Accountable)a).ramBytesUsed() : 0;
-        }
-
         private String parseKey (BytesReference key) throws IOException {
             StreamInput strm = key.streamInput();
 
@@ -238,7 +219,7 @@ public class TransportAction extends NodeTransportActionBase {
 
         @SuppressWarnings("unchecked")
         private void processQueryCache() throws Exception {
-            System.out.println("Running processQueryCache");
+            System.out.println("Fetching QUERY cache");
             IndicesQueryCache indicesQueryCache = indicesService.getIndicesQueryCache();
             LRUQueryCache lruCache = (LRUQueryCache) getField(indicesQueryCache, "cache");
             shardKeyMap = (ShardCoreKeyMap) getField(indicesQueryCache, "shardKeyMap");
@@ -283,6 +264,45 @@ public class TransportAction extends NodeTransportActionBase {
             }
             req.setCacheInfo(indexSet, indexCacheMap, null);
 
+        }
+        @SuppressWarnings("unchecked")
+        private void processBitsetCache() throws Exception {
+            System.out.println("Fetching BITSET cache");
+            Map<String, Map<String, CacheInfo>> indexCacheMap = new HashMap<String, Map<String, CacheInfo>>();
+            Set<String> indexSet = new HashSet<String>();
+
+            Iterator<IndexService> iter = indicesService.iterator();
+            while (iter.hasNext()) {
+                IndexService indexService = iter.next();
+                BitsetFilterCache bitsetCache = indexService.cache().bitsetFilterCache();
+                String name = indexService.index().getName();
+                indexSet.add(name);
+                
+                Cache<IndexReader.CacheKey, Cache<Query, Value>> loadedFilters = (Cache<CacheKey, Cache<Query, Value>>) getField(bitsetCache, "loadedFilters");
+                for (Cache<Query, Value> cc: loadedFilters.values()) {
+                    for (Query key: cc.keys()) {
+                        Value value = cc.get(key);
+                        if (value == null) continue;
+                        
+                        BitSet bitset = (BitSet) getField (value, "bitset");
+                        CacheInfo info = new CacheInfo(key, bitset);
+
+                        Map<String, CacheInfo> statsPerQuery = indexCacheMap.get(name);
+                        if (statsPerQuery == null) {
+                            statsPerQuery = new HashMap<String, CacheInfo>();
+                            indexCacheMap.put(name, statsPerQuery);
+                        }
+                        
+                        CacheInfo existing = statsPerQuery.get(info.query);
+                        if (existing != null) {
+                            existing.combine(info);
+                            continue;
+                        }
+                        statsPerQuery.put(info.query, info);
+                    }
+                }
+            }
+            req.setCacheInfo(indexSet, indexCacheMap, null);
         }
 
         public static String getDirectoryName(Object obj) throws Exception {

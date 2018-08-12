@@ -172,7 +172,7 @@ public class DocInverter {
         json.startArray("indexedFields");
 
         FieldInfo[] fieldInfos = getFields(leafRdr);
-        IndexFieldDataService fieldDataService = indexShard.indexFieldDataService();
+        //PWIndexFieldDataService fieldDataService = indexShard.indexFieldDataService();
 
         boolean inField=false;
         for (FieldInfo field: fieldInfos) {
@@ -192,15 +192,12 @@ public class DocInverter {
             json.field("mappedType", fieldType==null ? null : fieldType.typeName());
             json.field("mappedClass", Utils.getClass(fieldType));
             json.field("type", fieldType);
-            json.field("numericType", fieldType.numericType());
-            if (fieldType.numericType()!=null)
-                json.field("precisionSteps", fieldType.numericPrecisionStep());
 
             System.out.printf("Handling field2 %s\n", field);
             //Dump index terms if requested
             if (selectedOutput.isSelected ("indexed")) {
                 json.startArray("terms");
-                Terms terms = leafRdr.fields().terms(field.name);
+                Terms terms = leafRdr.terms(field.name);
                 if (terms != null)
                     extractTerms (json, terms, field, fieldType, typeHandler);
                 else {
@@ -214,7 +211,7 @@ public class DocInverter {
             
             if (selectedOutput.isSelected ("docvalues")) {
                 json.startObject("docvalues");
-                extractDocValues (json, fieldDataService, field, fieldType, typeHandler);
+//PW                extractDocValues (json, fieldDataService, field, fieldType, typeHandler);
                 json.endObject();
             }
         }
@@ -251,11 +248,11 @@ public class DocInverter {
     }
 
     private void extractPointTerms(XContentBuilder json, FieldInfo fieldInfo, MappedFieldType fieldType, TypeHandler typeHandler) throws IOException {
-        PointValues values = leafRdr.getPointValues();
+        PointValues values = leafRdr.getPointValues(fieldInfo.name);
         System.out.printf("points for %s: %s\n", fieldInfo.name, values);
         if (values == null) return;
         try {
-           values.intersect(fieldInfo.name, new PointsVisitor(json, typeHandler, this.docId, this.outputLevel));
+           values.intersect(new PointsVisitor(json, typeHandler, this.docId, this.outputLevel));
         } catch (IllegalArgumentException x) {  //Expected: bug in Lucene
         }
     }

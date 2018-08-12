@@ -39,7 +39,7 @@ import org.elasticsearch.rest.RestRequest;
 
 
 public class CacheDumpTransportItem extends TransportItemBase {
-    public enum CacheType {Request, Query};
+    public enum CacheType {Request, Query, Bitset};
     public enum SortType {Query, Size};
     private Map<String, Map<String, CacheInfo>> indexCacheMap;
     private Set<String> indexSet;
@@ -72,6 +72,9 @@ public class CacheDumpTransportItem extends TransportItemBase {
         } else if (type.equals("query")) {
             cacheType = CacheType.Query;
             if (indexExpr == null) indexExpr = "//indices//(.*)//\\d*//index/$1";
+        } else if (type.equals("bitset")) {
+            cacheType = CacheType.Bitset;
+            if (indexExpr == null) indexExpr = "(.*)/$1";
         }  else throw new RuntimeException ("Unsupported value for type: [" + type + "]. Valid: query, request.");
 
         if ("null".equals(indexExpr) || (indexExpr != null && indexExpr.length()==0)) indexExpr = null;

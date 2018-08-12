@@ -27,19 +27,19 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 
+import nl.bitmanager.elasticsearch.extensions.RestControllerWrapper;
 import nl.bitmanager.elasticsearch.transport.NodeBroadcastRequest;
 import nl.bitmanager.elasticsearch.transport.NodeBroadcastResponse;
 
 public class VersionRestAction extends BaseRestHandler {
 
 	@Inject
-	public VersionRestAction(Settings settings, RestController controller) {
+	public VersionRestAction(Settings settings, RestControllerWrapper c) {
 		super(settings);
-		controller.registerHandler(GET, "/_bm/version", this);
+		c.registerHandler(GET, "/_bm/version", this);
 	}
 
 	@Override
@@ -58,4 +58,9 @@ public class VersionRestAction extends BaseRestHandler {
 	public boolean canTripCircuitBreaker() {
 		return false;
 	}
+
+    @Override
+    public String getName() {
+        return ActionDefinition.INSTANCE.name();
+    }
 }

@@ -43,8 +43,8 @@ public class BoundedSimilarity extends Similarity {
     }
 
     @Override
-    public SimWeight computeWeight(CollectionStatistics collectionStats, TermStatistics... termStats) {
-        return new BoundedWeight(this, settings, collectionStats, termStats);
+    public SimWeight computeWeight(float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+        return new BoundedWeight(this, boost, collectionStats, termStats);
     }
 
     @Override
@@ -56,9 +56,9 @@ public class BoundedSimilarity extends Similarity {
         private BoundedSimilarity similarity;
         private BoundedSimilaritySettings settings;
 
-        public Provider(String name, Settings settings) {
+        public Provider(String name, Settings providerSettings, Settings indexSettings) {
             super(name);
-            this.settings = new BoundedSimilaritySettings(settings);
+            this.settings = new BoundedSimilaritySettings(providerSettings);
             similarity = new BoundedSimilarity(this.settings);
             // System.out.println("Loaded: " + toString());
         }

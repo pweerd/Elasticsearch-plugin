@@ -65,11 +65,11 @@ public class BytesHandler extends TypeHandlerBase {
     static Object[]  static_docValuesToObjects(AtomicFieldData fieldData, int docid) {
         try {
             SortedBinaryDocValues bdv = fieldData.getBytesValues();
-            bdv.setDocument(docid);
-            int N = bdv.count();
+            if (!bdv.advanceExact(docid)) return null;
+            int N = bdv.docValueCount();
             Object[] ret = new Object[N];
             for (int i=0; i<N; i++) {
-                ret[i] = bdv.valueAt(i).toString();
+                ret[i] = bdv.nextValue().toString();
             }
             return ret;
         } catch (Throwable th) {

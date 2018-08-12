@@ -19,6 +19,8 @@
 
 package nl.bitmanager.elasticsearch.typehandlers;
 
+import java.io.IOException;
+
 import org.apache.lucene.geo.GeoEncodingUtils;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.elasticsearch.index.fielddata.MultiGeoPointValues;
@@ -42,15 +44,15 @@ public class GeoPointHandler extends SafeTypeHandler {
     }
 
     @Override
-    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         AbstractAtomicGeoPointFieldData dv = (AbstractAtomicGeoPointFieldData)fieldData;
         MultiGeoPointValues dvs = dv.getGeoPointValues();
-        dvs.setDocument(docid);
-        int N = dvs.count();
+        if (!dvs.advanceExact(docid)) return null;
+        int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {
             for (int i = 0; i < N; i++) 
-                ret[i] = dvs.valueAt(i).toString();
+                ret[i] = dvs.nextValue().toString();
         }
         return ret;
     }

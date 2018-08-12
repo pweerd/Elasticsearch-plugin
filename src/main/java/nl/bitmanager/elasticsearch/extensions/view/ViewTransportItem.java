@@ -26,6 +26,8 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -115,17 +117,23 @@ public class ViewTransportItem extends TransportItemBase {
     public void processShard (IndexShard indexShard) throws Exception {
         Searcher searcher = indexShard.acquireSearcher("view");
         try {
-            TermQuery termQ = new TermQuery (new Term (UidFieldMapper.NAME, Uid.createUidAsBytes (type, id))); 
+            BooleanQuery.Builder b = new BooleanQuery.Builder();
+            b.add(new TermQuery (new Term (UidFieldMapper.NAME, Uid.createUidAsBytes (type, id))), Occur.SHOULD);
+            b.add(new TermQuery (new Term ("_id", Uid.encodeId(id))), Occur.SHOULD);
+            b.setMinimumNumberShouldMatch(1);
+            BooleanQuery bq = b.build();
+            System.out.printf("TERM=%s, id=%s, type=%s\n", b, id, type);
             List<LeafReaderContext> leaves = searcher.reader().getContext().leaves();
             System.out.println("shard rdr: " + searcher.reader().getClass().getName());
             for (LeafReaderContext leaf : leaves) {
                 LeafReader leafRdr = leaf.reader();
                 IndexSearcher leafSearcher = new IndexSearcher (leafRdr);
                 //Try to locate the doc
-                TopDocs topdocs = leafSearcher.search (termQ,  1);
+                TopDocs topdocs = leafSearcher.search (bq,  1);
                 if (topdocs.totalHits<=0) continue;
 
                 int docid = topdocs.scoreDocs[0].doc + docOffset;
+                System.out.printf("-- doc=%d, use doc=%d\n", topdocs.scoreDocs[0].doc, docid);
                 Document d = leaf.reader().document(docid);
 //                for (IndexableField f: d) {
 //                    System.out.println("F=" + f);

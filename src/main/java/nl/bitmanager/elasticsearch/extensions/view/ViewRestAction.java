@@ -27,36 +27,38 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 
+import nl.bitmanager.elasticsearch.extensions.RestControllerWrapper;
 import nl.bitmanager.elasticsearch.transport.ShardBroadcastRequest;
 import nl.bitmanager.elasticsearch.transport.ShardBroadcastResponse;
 
 
 public class ViewRestAction extends BaseRestHandler {
 
-   @Inject
-   public ViewRestAction(Settings settings, RestController controller) {
-      super(settings);
-      controller.registerHandler(GET, "/{index}/{type}/{id}/_view", this);
-      controller.registerHandler(GET, "/{index}/{type}/_view", this);
-      controller.registerHandler(GET, "/{index}/_view", this);
-   }
-   
-   
-   @Override
-   public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
-       ViewTransportItem item = new ViewTransportItem(request);
-       ShardBroadcastRequest broadcastRequest = new ShardBroadcastRequest(ActionDefinition.INSTANCE, item, request.param("index")); 
-       try {
-           return channel -> client.admin().indices().execute(ActionDefinition.INSTANCE, broadcastRequest,
-                   new RestToXContentListener<ShardBroadcastResponse>(channel));
-       } catch (Exception e) {
-           e.printStackTrace();
-           throw e;
-       }
-   }
+    @Inject
+    public ViewRestAction(Settings settings, RestControllerWrapper c) {
+        super(settings);
+        c.registerHandler(GET, "/{index}/{type}/{id}/_view", this);
+    }
+
+    @Override
+    public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
+        ViewTransportItem item = new ViewTransportItem(request);
+        ShardBroadcastRequest broadcastRequest = new ShardBroadcastRequest(ActionDefinition.INSTANCE, item, request.param("index"));
+        try {
+            return channel -> client.admin().indices().execute(ActionDefinition.INSTANCE, broadcastRequest,
+                    new RestToXContentListener<ShardBroadcastResponse>(channel));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    @Override
+    public String getName() {
+        return ActionDefinition.INSTANCE.name();
+    }
 
 }

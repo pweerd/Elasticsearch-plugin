@@ -69,11 +69,11 @@ public class ShardFieldStats {
         max = Utils.cloneBytes (terms.getMax(), EMPTY);
     }
     
-    public ShardFieldStats(PointValues points, String fieldName) throws IOException {
-        docCount = points.getDocCount(fieldName);
-        termCount = points.size(fieldName);
-        min = Utils.cloneBytes (points.getMinPackedValue(fieldName), EMPTY);
-        max = Utils.cloneBytes (points.getMaxPackedValue(fieldName), EMPTY);
+    public ShardFieldStats(PointValues points) throws IOException {
+        docCount = points.getDocCount();
+        termCount = points.size();
+        min = Utils.cloneBytes (points.getMinPackedValue(), EMPTY);
+        max = Utils.cloneBytes (points.getMaxPackedValue(), EMPTY);
     }
     
     

@@ -28,27 +28,30 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 
+import nl.bitmanager.elasticsearch.extensions.RestControllerWrapper;
+import nl.bitmanager.elasticsearch.extensions.view.ActionDefinition;
 import nl.bitmanager.elasticsearch.support.HtmlRestResponse;
 import nl.bitmanager.elasticsearch.support.Utils;
 
 public class HelpRestAction extends BaseRestHandler {
 
     @Inject
-    public HelpRestAction(Settings settings, RestController controller) {
+    public HelpRestAction(Settings settings, RestControllerWrapper c) {
         super(settings);
-        controller.registerHandler(GET, "/_bm", this);
+        c.registerHandler(GET, "/_bm", this);
     }
 
     @Override
     public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
         HtmlRestResponse resp;
         String accept = request.header("Accept");
+        System.out.println("HELP: Accept=" + accept);
 
         if (accept != null && (accept.indexOf("application/json") >=0 || accept.indexOf("text/javascript") >= 0 )) {
+            System.out.println("HELP: sending json");
             InputStream strm = this.getClass().getClassLoader().getResourceAsStream("help.json");
             System.out.println("strm=" + strm + ", client=" + Utils.getTrimmedClass(client));
             int avail = strm.available();
@@ -58,10 +61,15 @@ public class HelpRestAction extends BaseRestHandler {
             strm.close();
             resp = new HtmlRestResponse(RestStatus.OK, respBytes);
         } else {
-            resp = new HtmlRestResponse(RestStatus.MOVED_PERMANENTLY, "https://github.com/pweerd/Elasticsearch-plugin/#bitmanagers-elasticsearch-plugin".getBytes("UTF-8"));
+            System.out.println("HELP: sending redirect");
+            resp = new HtmlRestResponse(RestStatus.FOUND, "https://github.com/pweerd/Elasticsearch-plugin/#bitmanagers-elasticsearch-plugin".getBytes("UTF-8"));
             resp.addHeader("Location", "https://github.com/pweerd/Elasticsearch-plugin/#bitmanagers-elasticsearch-plugin");
         }
         return channel -> channel.sendResponse(resp);
     }
 
+    @Override
+    public String getName() {
+        return ActionDefinition.INSTANCE.name();
+    }
 }

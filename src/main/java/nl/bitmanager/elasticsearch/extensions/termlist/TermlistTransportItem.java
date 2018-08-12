@@ -340,7 +340,11 @@ public class TermlistTransportItem extends TransportItemBase {
             if (isFieldRequested(fieldInfo.name)) {
                 // SourceFieldType xx=null;
                 MappedFieldType mft = indexShard.mapperService().fullName(fieldInfo.name);
-                System.out.printf("MappedFieldType for %s : %s\n", fieldInfo.name, mft.getClass().getName());
+                if (mft==null) {;
+                   System.out.printf ("ERROR: field %s has no es-fieldmapping\n", fieldInfo.name);
+                   continue;
+                }
+                System.out.printf("MappedFieldType for %s : %s\n", fieldInfo.name, mft==null ? "null": mft.getClass().getName());
                 TypeHandler typeHandler = TypeHandler.create(mft);
                 termlist.setType(typeHandler.typeName);
                 Terms terms = luceneFields.terms(fieldInfo.name);
@@ -415,11 +419,11 @@ public class TermlistTransportItem extends TransportItemBase {
         List<LeafReaderContext> leaves = ctx.leaves();
         for (LeafReaderContext leave : leaves) {
             LeafReader leaveRdr = leave.reader();
-            PointValues values = leaveRdr.getPointValues();
+            PointValues values = leaveRdr.getPointValues(field);
             if (values == null)
                 continue;
             try {
-               values.intersect(field, new PointsVisitor(termlist, range));
+               values.intersect(new PointsVisitor(termlist, range));
             } catch (IllegalArgumentException x) {  //Expected: bug in Lucene
             }
         }
@@ -429,12 +433,12 @@ public class TermlistTransportItem extends TransportItemBase {
         List<LeafReaderContext> leaves = ctx.leaves();
         ShardFieldStats stats = null;
         for (LeafReaderContext leave : leaves) {
-            LeafReader leaveRdr = leave.reader();
-            PointValues values = leaveRdr.getPointValues();
+            LeafReader leafRdr = leave.reader();
+            PointValues values = leafRdr.getPointValues(field);
             if (values == null)
                 continue;
             try {
-                ShardFieldStats tmp = new ShardFieldStats(values, field);
+                ShardFieldStats tmp = new ShardFieldStats(values);
                 if (stats==null) stats = tmp;
                 else stats.combine(tmp);
             } catch (IllegalArgumentException x) {  //Expected: bug in Lucene
