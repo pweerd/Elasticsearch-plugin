@@ -60,7 +60,7 @@ Example to find all deleted documents:
 ```javascript
 {
     "query": {
-        "bm\_match_deleted": {}
+        "bm_match_deleted": {}
     }
 }
 ```
@@ -69,7 +69,7 @@ Example to find all deleted documents that match a certain term:
 ```javascript
 {
     "query": {
-        "bm\_match_deleted": {
+        "bm_match_deleted": {
             "query": {
                 "term": {"field": "value"}
             }
@@ -90,7 +90,7 @@ Example to find all nested documents:
 ```javascript
     {
         "query": {
-            "bm\_match\_nested": {}
+            "bm_match_nested": {}
         }
     }
 ```
@@ -99,7 +99,7 @@ Example to find all nested documents that match a certain term (note that this c
 ```javascript
 {
     "query": {
-        "bm\_match_nested": {
+        "bm_match_nested": {
             "query": {
                 "term": {"field": "value"}
             }
@@ -112,7 +112,7 @@ Example to aggregate over all nested terms and undup them over a parent 'parent_
 ```javascript
 {
     "query": {
-        "bm\_match\_nested": {}
+        "bm_match_nested": {}
     }   
     "aggs": {
        "raw": {
@@ -122,8 +122,8 @@ Example to aggregate over all nested terms and undup them over a parent 'parent_
        },
        "aggs": {
            "undupped": {
-               "bm\_undup_by\_parents": {
-                   "parent_paths": "\_nested\_,parent_rel"
+               "bm_undup_by_parents": {
+                   "parent_paths": "_nested_,parent_rel"
                }
            }
        }
@@ -144,7 +144,7 @@ Example to find all nested documents:
 ```javascript
 {
     "query": {
-        "bm\_allow\_nested": {
+        "bm_allow_nested": {
             "query": {
                 "term": {"nested.field": "value"}
             }
@@ -158,8 +158,8 @@ Example to find all nested documents:
        },
        "aggs": {
            "undupped": {
-               "bm\_undup_by\_parents": {
-                   "parent_paths": "\_nested\_"
+               "bm_undup_by_parents": {
+                   "parent_paths": "_nested_"
                }
            }
        }
@@ -196,7 +196,7 @@ Suppose we have employee-records that have company-records as their parents. We 
        },
        "aggs": {
            "undupped": {
-               "bm\_undup_by\_parents": {
+               "bm_undup_by_parents": {
                    "parent_paths": "employee",
                    "cache_bitsets": true
                }
@@ -246,11 +246,11 @@ discount_overlaps |  true   | Determines whether overlap tokens (Tokens with 0 p
 The total score is calculated as 1.0 + idf + tf, where 0<=idf<=max_idf and 0<=tf<=max_tf
 
 **Note: bug in Elasticsearch**  
-There is a bug in ES that prevents indices to be upgraded to a new version if a custom similarity is used.
+There was a bug in ES that prevented indices to be upgraded to a new version if a custom similarity is used.
 Elasticsearch will not even start when this problem is encountered.
-See [https://github.com/elastic/elasticsearch/issues/25350] 
+See [https://github.com/elastic/elasticsearch/issues/25350]. It should be solved now. 
 
-I see 2 possible workarounds:
+If you experience problems, I see 2 possible workarounds:
 * Remove the custom similarity before upgrading, and set the similarity afterwards.
 * Copy the whole index, including the index definition from a cluster running the old version into the new cluster.
 
