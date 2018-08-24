@@ -44,10 +44,10 @@ public class GeoPointHandler extends SafeTypeHandler {
     }
 
     @Override
-    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
+    protected Object[] _docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         AbstractAtomicGeoPointFieldData dv = (AbstractAtomicGeoPointFieldData)fieldData;
         MultiGeoPointValues dvs = dv.getGeoPointValues();
-        if (!dvs.advanceExact(docid)) return null;
+        if (!dvs.advanceExact(docid)) return NO_DOCVALUES;
         int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {

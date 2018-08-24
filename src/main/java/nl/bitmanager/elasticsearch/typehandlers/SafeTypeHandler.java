@@ -37,15 +37,16 @@ public abstract class SafeTypeHandler extends TypeHandlerBase {
     }
     
     @Override
-    public XContentBuilder exportDocValues(XContentBuilder builder, AtomicFieldData fieldData, int docid) throws IOException {
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         try {
-            return super.exportDocValues (builder, fieldData, docid);
+            return _docValuesToObjects (fieldData, docid);
         } catch (Throwable th) {
             th.printStackTrace();
-            return BytesHandler.instance.exportDocValues (builder, fieldData, docid);
+            return BytesHandler.instance.docValuesToObjects (fieldData, docid);
         }
     }
 
+    @Override
     public String toString(byte[] b) {
         try {
             return super.toString(b);

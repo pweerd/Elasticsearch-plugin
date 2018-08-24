@@ -27,6 +27,7 @@ import org.elasticsearch.index.fielddata.AtomicFieldData;
 public abstract class TypeHandlerBase extends TypeHandler {
 
     abstract Object[] _bytesToObjects(byte[] bytes);
+    abstract Object[] _docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException ;
 
 
     @Override
@@ -35,15 +36,13 @@ public abstract class TypeHandlerBase extends TypeHandler {
         return (values.length==1) ? builder.value(values[0]) : builder.value(values);
     }
     
+    
     @Override
-    public XContentBuilder exportDocValues(XContentBuilder builder, AtomicFieldData fieldData, int docid) throws IOException {
-        Object[] values = docValuesToObjects (fieldData, docid);
-        int N = values.length;
-        builder.field("count", N);
-        if (N > 0) builder.array("values", values);
-        return builder;
+    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
+        return _docValuesToObjects (fieldData, docid);
     }
 
+    
     protected TypeHandlerBase(String type) {
         super(type);
     }

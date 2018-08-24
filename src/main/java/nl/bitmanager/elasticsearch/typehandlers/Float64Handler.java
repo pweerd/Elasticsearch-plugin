@@ -44,7 +44,7 @@ public class Float64Handler extends Int64Handler {
     public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         AtomicNumericFieldData numData = (AtomicNumericFieldData) fieldData;
         SortedNumericDoubleValues dvs = numData.getDoubleValues();
-        if (!dvs.advanceExact(docid)) return null;
+        if (!dvs.advanceExact(docid)) return NO_DOCVALUES;
         int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {

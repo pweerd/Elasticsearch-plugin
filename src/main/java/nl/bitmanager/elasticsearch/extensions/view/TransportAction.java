@@ -50,7 +50,7 @@ public class TransportAction extends ShardTransportActionBase {
         ViewTransportItem transportItem = new ViewTransportItem(rawRequest);
         IndexShard indexShard = super.getShard(indicesService, request);
 
-        transportItem.processShard(indexShard);
+        transportItem.processShard(indicesService, indexShard);
         return transportItem;
     }
 

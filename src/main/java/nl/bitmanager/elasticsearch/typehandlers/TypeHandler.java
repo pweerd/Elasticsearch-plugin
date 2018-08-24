@@ -29,6 +29,7 @@ import org.elasticsearch.index.mapper.MappedFieldType;
 public abstract class TypeHandler {
     public final String typeName;
     public final boolean knowType;
+    public static final Object[] NO_DOCVALUES = new Object[0];
 
     public abstract Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException;
     public abstract XContentBuilder export(XContentBuilder builder, byte[] bytes) throws IOException;
@@ -37,12 +38,6 @@ public abstract class TypeHandler {
         return export (builder.field(field), bytes);
     }
     
-    public abstract XContentBuilder exportDocValues(XContentBuilder builder, AtomicFieldData fieldData, int docid) throws IOException;
-    public XContentBuilder export(XContentBuilder builder, String field, AtomicFieldData fieldData, int docid) throws IOException {
-        return exportDocValues (builder.field(field), fieldData, docid);
-    }
-
-
     public abstract byte[] toBytes(String s);
 
     public abstract String toString(byte[] b);

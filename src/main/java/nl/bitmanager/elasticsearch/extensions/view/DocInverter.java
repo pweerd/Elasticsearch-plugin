@@ -42,13 +42,15 @@ import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.index.IndexService;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.elasticsearch.index.fielddata.IndexFieldData;
-import org.elasticsearch.index.fielddata.IndexFieldDataService;
 import org.elasticsearch.index.mapper.DocumentFieldMappers;
 import org.elasticsearch.index.mapper.DocumentMapper;
 import org.elasticsearch.index.mapper.MappedFieldType;
+import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.index.shard.IndexShard;
+import org.elasticsearch.indices.IndicesService;
 
 import nl.bitmanager.elasticsearch.support.Utils;
 import nl.bitmanager.elasticsearch.typehandlers.BytesHandler;
@@ -60,6 +62,8 @@ public class DocInverter {
     private int outputLevel;
     private final LeafReader leafRdr;
     private final LeafReaderContext leafCtx;
+    private final IndicesService indicesService;
+    private final IndexShard indexShard;
     
     public byte[] jsonBytes;
     
@@ -72,9 +76,11 @@ public class DocInverter {
         return uid.substring(0, idx);
     }
 
-    public DocInverter(ViewTransportItem reqItem, int docid, Document doc, LeafReaderContext leaf, String fields, String type, IndexShard indexShard) throws Exception {
+    public DocInverter(ViewTransportItem reqItem, int docid, Document doc, LeafReaderContext leaf, String fields, String type, IndicesService indicesService, IndexShard indexShard) throws Exception {
         this.leafRdr = leaf.reader();
         this.leafCtx = leaf;
+        this.indicesService = indicesService;
+        this.indexShard = indexShard;
         DocumentFieldMappers fieldMappers = null;
         type = getTypeFromDoc(doc, type);
         if (type != null ) {
@@ -92,7 +98,7 @@ public class DocInverter {
         json.field("shardId", indexShard.shardId());
         json.field("docid", docId);
         loadStoredFields(json, doc, fieldMappers);
-        loadIndexedFields(json, doc, leafRdr, fieldMappers, indexShard);
+        loadIndexedFields(json, doc, leafRdr, fieldMappers);
         json.endObject();
         
         jsonBytes = BytesReference.toBytes(json.bytes());
@@ -166,13 +172,14 @@ public class DocInverter {
 
 
     
-    private void loadIndexedFields(XContentBuilder json, Document d, LeafReader leafRdr, DocumentFieldMappers fieldMappers, IndexShard indexShard) throws Exception {
+    private void loadIndexedFields(XContentBuilder json, Document d, LeafReader leafRdr, DocumentFieldMappers fieldMappers) throws Exception {
         if (!selectedOutput.isSelected("indexed") && !selectedOutput.isSelected ("docvalues")) return;
 
         json.startArray("indexedFields");
 
         FieldInfo[] fieldInfos = getFields(leafRdr);
-        //PWIndexFieldDataService fieldDataService = indexShard.indexFieldDataService();
+        final IndexService indexService = indicesService.indexServiceSafe(indexShard.shardId().getIndex());
+        final QueryShardContext queryShardContext = indexService.newQueryShardContext(indexShard.shardId().getId(), leafRdr, () -> 0L, null);
 
         boolean inField=false;
         for (FieldInfo field: fieldInfos) {
@@ -191,7 +198,7 @@ public class DocInverter {
             json.field("class", Utils.getClass(field));
             json.field("mappedType", fieldType==null ? null : fieldType.typeName());
             json.field("mappedClass", Utils.getClass(fieldType));
-            json.field("type", fieldType);
+            json.field("type", Utils.toString(fieldType));
 
             System.out.printf("Handling field2 %s\n", field);
             //Dump index terms if requested
@@ -211,7 +218,7 @@ public class DocInverter {
             
             if (selectedOutput.isSelected ("docvalues")) {
                 json.startObject("docvalues");
-//PW                extractDocValues (json, fieldDataService, field, fieldType, typeHandler);
+                extractDocValues (json, queryShardContext, field, fieldType, typeHandler);
                 json.endObject();
             }
         }
@@ -222,10 +229,10 @@ public class DocInverter {
 
     }
 
-    private void extractDocValues(XContentBuilder json, IndexFieldDataService fieldDataService, FieldInfo field, MappedFieldType fieldType, TypeHandler typeHandler) throws IOException {
+    private void extractDocValues(XContentBuilder json, QueryShardContext queryShardContext, FieldInfo field, MappedFieldType fieldType, TypeHandler typeHandler) throws IOException {
         IndexFieldData<?> fd;
         try {
-            fd = fieldDataService.getForField(fieldType);
+            fd = fieldType==null ? null : queryShardContext.getForField(fieldType);
         } catch(Throwable th) {
             String x = th.toString();
             if (th instanceof IllegalArgumentException) {
@@ -235,7 +242,7 @@ public class DocInverter {
             json.field ("error", x);
             return;
         }
-        AtomicFieldData dv = fd.load(leafCtx);
+        AtomicFieldData dv = fd==null ? null : fd.load(leafCtx);
         if (this.outputLevel > 0) {
             json.field("ft_class", Utils.getClass(fieldType));
             json.field("fd_class", Utils.getClass(fd));
@@ -243,7 +250,21 @@ public class DocInverter {
             json.field("th_class", Utils.getClass(typeHandler));
         }
         if (dv != null) {
-            typeHandler.exportDocValues(json, dv, docId);
+            Object[] values =  typeHandler.docValuesToObjects(dv, docId);
+            int N = values==null ? 0 : values.length;
+            json.field("count", N);
+            if (N > 0) {
+                if (outputLevel > 0) {
+                    Object[] binValues = BytesHandler.instance.docValuesToObjects(dv,  docId);
+                    Object[] newValues = new Object[2*N];
+                    for (int i=0; i<N; i++) {
+                        newValues[2*i+0] = values[i];
+                        newValues[2*i+1] = "BIN: " + binValues[i];
+                    }
+                    values = newValues;
+                }
+                json.array("values", values);
+            }
         }
     }
 
@@ -272,11 +293,10 @@ public class DocInverter {
             if (docId != dpe.advance(docId))
                 continue;
             
-            json.startObject();
             byte[] bytes =  Utils.getBytes(term, null);
-            typeHandler.export(json, "value", bytes);
-            if (outputLevel > 0) BytesHandler.instance.export(json, "raw", bytes);
-            json.endObject();
+            typeHandler.export(json, bytes);
+            if (outputLevel > 0) 
+                json.value ("BIN: "  + BytesHandler.instance.toString (bytes));
         }
     }
     

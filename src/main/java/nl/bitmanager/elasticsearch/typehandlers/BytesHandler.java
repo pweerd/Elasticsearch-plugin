@@ -19,6 +19,7 @@
 
 package nl.bitmanager.elasticsearch.typehandlers;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import org.apache.lucene.util.UnicodeUtil;
@@ -38,7 +39,7 @@ public class BytesHandler extends TypeHandlerBase {
     }
 
     @Override
-    public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) {
+    protected Object[] _docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         return static_docValuesToObjects(fieldData, docid);
     }
 
@@ -65,7 +66,7 @@ public class BytesHandler extends TypeHandlerBase {
     static Object[]  static_docValuesToObjects(AtomicFieldData fieldData, int docid) {
         try {
             SortedBinaryDocValues bdv = fieldData.getBytesValues();
-            if (!bdv.advanceExact(docid)) return null;
+            if (!bdv.advanceExact(docid)) return NO_DOCVALUES;
             int N = bdv.docValueCount();
             Object[] ret = new Object[N];
             for (int i=0; i<N; i++) {

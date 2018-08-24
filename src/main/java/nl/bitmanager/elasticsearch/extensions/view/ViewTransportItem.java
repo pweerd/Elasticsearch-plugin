@@ -19,6 +19,7 @@
 
 package nl.bitmanager.elasticsearch.extensions.view;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -35,10 +36,12 @@ import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.engine.Engine.Searcher;
 import org.elasticsearch.index.mapper.Uid;
 import org.elasticsearch.index.mapper.UidFieldMapper;
 import org.elasticsearch.index.shard.IndexShard;
+import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.rest.RestRequest;
 
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
@@ -79,6 +82,7 @@ public class ViewTransportItem extends TransportItemBase {
         json = other.json;
     }
     
+    @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject("request");
         builder.field("field", fieldFilter);
@@ -92,6 +96,7 @@ public class ViewTransportItem extends TransportItemBase {
         return builder;
     }
 
+    @Override
     public void readFrom(StreamInput in) throws IOException {
         type = TransportItemBase.readStr(in);
         id = TransportItemBase.readStr(in);
@@ -103,6 +108,7 @@ public class ViewTransportItem extends TransportItemBase {
         json = readByteArray(in); 
     }
 
+    @Override
     public void writeTo(StreamOutput out) throws IOException {
         TransportItemBase.writeStr(out, type);
         TransportItemBase.writeStr(out, id);
@@ -114,7 +120,7 @@ public class ViewTransportItem extends TransportItemBase {
         writeByteArray(out, json);
     }
 
-    public void processShard (IndexShard indexShard) throws Exception {
+    public void processShard (IndicesService indicesService, IndexShard indexShard) throws Exception {
         Searcher searcher = indexShard.acquireSearcher("view");
         try {
             BooleanQuery.Builder b = new BooleanQuery.Builder();
@@ -138,7 +144,7 @@ public class ViewTransportItem extends TransportItemBase {
 //                for (IndexableField f: d) {
 //                    System.out.println("F=" + f);
 //                }
-                DocInverter di = new DocInverter (this, docid, d, leaf, null, type, indexShard);
+                DocInverter di = new DocInverter (this, docid, d, leaf, null, type, indicesService, indexShard);
                 json = di.jsonBytes;
                 break; //Found! So we are done...
             }
