@@ -68,7 +68,7 @@ public class BoundedScorerNorms extends BoundedScorer {
         int fl = (int)norms.longValue();
         float tfBoost = (float)(maxTf * Math.log(biasTf+tf) / Math.log(biasTf + fl));
 
-        String msg = String.format (Locale.ROOT, "tfBoost (tf=%.2f [%.2f], fieldlen=%d, maxTf=%.2f, forceTf=%d, bias=%.2f)", tf, freq.getValue(), fl, maxTf, forceTf, biasTf);
+        String msg = String.format (Locale.ROOT, "tfBoost (tf=%d [%.2f], fieldlen=%d, maxTf=%.2f, forceTf=%d, bias=%.2f)", tf, freq.getValue(), fl, maxTf, forceTf, biasTf);
         return weight.createExplain(doc, Explanation.match(tfBoost, msg, BoundedWeight.EMPTY_EXPLAIN_LIST));
     }
 
