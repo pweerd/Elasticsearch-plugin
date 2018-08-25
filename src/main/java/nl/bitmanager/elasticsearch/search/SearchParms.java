@@ -47,7 +47,7 @@ public class SearchParms extends SearchExtBuilder {
     public SearchParms(XContentParser parser) throws IOException {
         Token token;
         String fieldName=null;
-        boolean diagnostics = false;
+        boolean diagnostics = true;
         while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
             switch (token) {
             case FIELD_NAME: 

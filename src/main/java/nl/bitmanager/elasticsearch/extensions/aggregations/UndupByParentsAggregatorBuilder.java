@@ -146,8 +146,8 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         String parent_paths = null;
         XContentParser.Token token;
         String currentFieldName = null;
-        boolean resilient = false; //pw moet true worden, maar nu even niet
-        boolean cache = false; //pw moet true worden, maar nu even niet
+        boolean resilient = true;
+        boolean cache = true; 
         while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
             switch (token) {
             case FIELD_NAME: 
