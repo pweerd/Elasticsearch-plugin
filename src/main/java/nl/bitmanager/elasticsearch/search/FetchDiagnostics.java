@@ -29,11 +29,11 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.elasticsearch.common.document.DocumentField;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.elasticsearch.index.fielddata.IndexFieldData;
-import org.elasticsearch.index.fielddata.IndexFieldDataService;
 import org.elasticsearch.index.mapper.DocumentFieldMappers;
 import org.elasticsearch.index.mapper.DocumentMapper;
 import org.elasticsearch.index.mapper.FieldMapper;
 import org.elasticsearch.index.mapper.MappedFieldType;
+import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.fetch.FetchSubPhase;
 import org.elasticsearch.search.internal.SearchContext;
@@ -77,17 +77,14 @@ public class FetchDiagnostics implements FetchSubPhase {
             DocumentMapper docMapper = context.mapperService().documentMapper(hitContext.hit().getType());
             DocumentFieldMappers mappers = docMapper.mappers();
             
-            //FieldInfo[] segmentFields = DocInverter.getFields(ctx.reader());
-//PW            
-//            IndexFieldDataService fds = context.fieldData();
+            QueryShardContext shardCtx = context.getQueryShardContext();
             LinkedHashMap<String, Object> dst = new LinkedHashMap<String, Object>();
             for (FieldMapper f: mappers) {
                 if (DEBUG) System.out.println("HIT execute2 F=" + f.name() + ", dv=" + f.fieldType().hasDocValues());
-                if (!f.fieldType().hasDocValues()) continue;
-//PW                extractDocValues  (dst, f, fds, hitContext);
+                if (f.fieldType().hasDocValues()) 
+                    extractDocValues  (dst, f, shardCtx, hitContext);
             }
             if (dst.size()>0) map.put("docvalues", dst);
-            //.parentFieldMapper();
         } catch (Exception e) {
             throw new RuntimeException (e.getMessage(), e);
         }
@@ -95,11 +92,11 @@ public class FetchDiagnostics implements FetchSubPhase {
         
     }
     
-    private void extractDocValues(Map<String, Object> dst, FieldMapper field, IndexFieldDataService fieldDataService, HitContext hitContext) throws IOException {
+    private void extractDocValues(Map<String, Object> dst, FieldMapper field, QueryShardContext shardCtx, HitContext hitContext) throws IOException {
         IndexFieldData<?> fd;
         MappedFieldType fieldType = field.fieldType();
         try {
-            fd = fieldDataService.getForField(fieldType);
+            fd = shardCtx.getForField(fieldType);
         } catch(Throwable th) {
             String x = th.toString();
             if (th instanceof IllegalArgumentException) {
