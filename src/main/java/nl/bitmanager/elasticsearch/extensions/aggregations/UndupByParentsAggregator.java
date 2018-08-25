@@ -34,6 +34,7 @@ import org.apache.lucene.search.join.BitSetProducer;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.elasticsearch.Version;
 import org.elasticsearch.common.lucene.search.Queries;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.util.LongArray;
@@ -84,7 +85,7 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
         this.cache_bitsets = factory.cache_bitsets;
         
         if (valuesSources[0] == null) { //1st level is reverseNested?
-            mainDocsFilter = Queries.newNonNestedFilter();
+            mainDocsFilter = Queries.newNonNestedFilter(context.mapperService().getIndexSettings().getIndexVersionCreated()); 
             mainDocsBitsetProducer = context.bitsetFilterCache().getBitSetProducer(mainDocsFilter);
             
             if (valuesSources.length == 1)

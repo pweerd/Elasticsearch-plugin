@@ -32,7 +32,6 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -92,7 +91,7 @@ public class ViewTransportItem extends TransportItemBase {
         builder.field("offset", docOffset);
         builder.endObject();
         if (json==null || json.length==0) return builder;
-        builder.rawField("doc", new BytesArray (json));
+        builder.rawField ("doc", new ByteArrayInputStream (json), XContentType.JSON);
         return builder;
     }
 

@@ -107,6 +107,11 @@ public class MatchDeletedQuery extends Query {
             return subWeight.scorer(context);
         }
 
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+            return false;
+        }
+
     }
 
     protected static class _BulkScorer extends BulkScorer {

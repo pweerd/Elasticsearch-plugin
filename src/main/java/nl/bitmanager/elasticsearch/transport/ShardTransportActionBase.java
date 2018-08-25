@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.DefaultShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastShardOperationFailedException;
@@ -83,20 +82,6 @@ public abstract class ShardTransportActionBase
         }
     }
 
-    // PW
-    // @Override
-    // protected String executor() {
-    // return ThreadPool.Names.GENERIC;
-    // }
-    //
-    // @Override
-    // protected ShardBroadcastRequest newRequest() {
-    // return new ShardBroadcastRequest(actionDefinition.createTransportItem());
-    // }
-
-    // protected abstract void consolidateResponse (TransportItemBase
-    // consolidatedItem, TransportItemBase shardItem);
-
     @SuppressWarnings("rawtypes")
     @Override
     protected ShardBroadcastResponse newResponse(ShardBroadcastRequest request, AtomicReferenceArray shardsResponses,
@@ -105,7 +90,7 @@ public abstract class ShardTransportActionBase
             System.out.printf("[%s]: newBroadcastShardResponse()\n", definition.id);
         int successfulShards = 0;
         int failedShards = 0;
-        List<ShardOperationFailedException> shardFailures = null;
+        List<DefaultShardOperationFailedException> shardFailures = null;
         TransportItemBase consolidatedResponse = request.getTransportItem();
 
         List<ShardResponse> okResponses = null;
@@ -123,7 +108,7 @@ public abstract class ShardTransportActionBase
                 logger.warn(shardException.getMessage(), cause);
                 failedShards++;
                 if (shardFailures == null) {
-                    shardFailures = new ArrayList<ShardOperationFailedException>();
+                    shardFailures = new ArrayList<DefaultShardOperationFailedException>();
                 }
                 shardFailures.add(new DefaultShardOperationFailedException(shardException));
                 continue;

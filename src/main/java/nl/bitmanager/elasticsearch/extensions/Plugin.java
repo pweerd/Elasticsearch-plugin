@@ -104,14 +104,14 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         } catch (Throwable e) {
             logger.error("Error during load " + Name + ": " + e.getMessage(), e);
         }
-        map = settings.getAsMap();
+
         sb = new StringBuilder();
         sb.append("Settings:\r\n");
-        for (Map.Entry<String, String> entry : map.entrySet()) {
+        for (String key: settings.keySet()) {
             sb.append("-- ");
-            sb.append(entry.getKey());
+            sb.append(key);
             sb.append('=');
-            sb.append(entry.getValue());
+            sb.append(settings.get(key));
             sb.append("\r\n");
         }
         logger.info(sb.toString());
@@ -120,8 +120,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     @Override
     public void onIndexModule(IndexModule indexModule) {
         logger.info("Register bounded_similarity");
-        indexModule.addSimilarity("bounded_similarity",
-                (name, providerSettings, indexSettings) -> new BoundedSimilarity.Provider(name, providerSettings, indexSettings));
+        indexModule.addSimilarity("bounded_similarity", BoundedSimilarity::create);
     }
 
     @Override

@@ -19,6 +19,7 @@
 
 package nl.bitmanager.elasticsearch.extensions.view;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -39,7 +40,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
-import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.IndexService;
@@ -101,7 +101,8 @@ public class DocInverter {
         loadIndexedFields(json, doc, leafRdr, fieldMappers);
         json.endObject();
         
-        jsonBytes = BytesReference.toBytes(json.bytes());
+        json.flush();
+        jsonBytes = ((ByteArrayOutputStream)json.getOutputStream()).toByteArray();
     }
 
     private void loadStoredFields(XContentBuilder json, Document d, DocumentFieldMappers fieldMappers) throws IOException {
@@ -240,6 +241,7 @@ public class DocInverter {
                     x = "Not supported";
             }
             json.field ("error", x);
+            //th.printStackTrace(); VersionFieldMapper $VersionFieldType
             return;
         }
         AtomicFieldData dv = fd==null ? null : fd.load(leafCtx);

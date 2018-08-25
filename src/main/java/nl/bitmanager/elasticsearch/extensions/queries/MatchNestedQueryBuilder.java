@@ -92,13 +92,13 @@ public class MatchNestedQueryBuilder extends AbstractQueryBuilder<MatchNestedQue
                     throwUnsupportedField (parser, NAME);
                 }
             } else if (token.isValue()) {
-                if (AbstractQueryBuilder.BOOST_FIELD.match(currentFieldName)) {
-                    boost = parser.floatValue();
-                } else if (AbstractQueryBuilder.NAME_FIELD.match(currentFieldName)) {
-                    queryName = parser.text();
-                } else {
+//                if (AbstractQueryBuilder.BOOST_FIELD.match(currentFieldName)) {
+//                    boost = parser.floatValue();
+//                } else if (AbstractQueryBuilder.NAME_FIELD.match(currentFieldName)) {
+//                    queryName = parser.text();
+//                } else {
                     throwUnsupportedField (parser, NAME);
-                }
+//                }
             } else
                 throwUnexpectedToken (parser, NAME);
 

@@ -22,7 +22,7 @@ package nl.bitmanager.elasticsearch.transport;
 import java.io.IOException;
 import java.util.List;
 
-import org.elasticsearch.action.ShardOperationFailedException;
+import org.elasticsearch.action.support.DefaultShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -38,7 +38,7 @@ public class ShardBroadcastResponse extends BroadcastResponse implements ToXCont
     }
 
     public ShardBroadcastResponse(TransportItemBase item, int totalShards, int successfulShards, int failedShards,
-            List<ShardOperationFailedException> shardFailures) {
+            List<DefaultShardOperationFailedException> shardFailures) {
         super(totalShards, successfulShards, failedShards, shardFailures);
         this.transportItem = item;
     }

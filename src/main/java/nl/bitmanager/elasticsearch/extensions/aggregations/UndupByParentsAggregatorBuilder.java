@@ -24,6 +24,7 @@ import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 import org.apache.lucene.search.Query;
@@ -38,6 +39,7 @@ import org.elasticsearch.index.mapper.MappedFieldType;
 import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.plugins.SearchPlugin.AggregationSpec;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
+import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregatorFactories.Builder;
 import org.elasticsearch.search.aggregations.AggregatorFactory;
 import org.elasticsearch.search.internal.SearchContext;
@@ -51,7 +53,7 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
     public final boolean cache_bitsets;
 
 
-    public UndupByParentsAggregatorBuilder(String name, String path, boolean resilient, boolean cache_bitsets) {
+    private UndupByParentsAggregatorBuilder(String name, String path, boolean resilient, boolean cache_bitsets) {
         super(name); 
         this.resilient = resilient;
         this.cache_bitsets = cache_bitsets;
@@ -62,6 +64,12 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         if (parentPaths.length == 0) {
             throw new IllegalArgumentException("[parent_path] should not be empty: [" + name + "]");
         }
+    }
+    private UndupByParentsAggregatorBuilder(UndupByParentsAggregatorBuilder other) {
+        super(other.name); 
+        this.resilient = other.resilient;
+        this.cache_bitsets = other.cache_bitsets;
+        this.parentPaths = Arrays.copyOf(other.parentPaths,  other.parentPaths.length);
     }
     
     private String[] parsePath (String path) {
@@ -313,5 +321,10 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
     }
 
 
-    
+    @Override
+    protected AggregationBuilder shallowCopy(Builder factoriesBuilder,  Map<String, Object> metaData) {
+        return new UndupByParentsAggregatorBuilder(this);
+    }
+
+
 }

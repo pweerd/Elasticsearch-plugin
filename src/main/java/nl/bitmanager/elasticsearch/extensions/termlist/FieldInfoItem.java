@@ -73,7 +73,7 @@ public class FieldInfoItem {
         }
         return indexOptions.toString();
     }
-    private static String docValuesAsString(FieldInfo info, MappedFieldType mft) {
+    private String docValuesAsString(FieldInfo info, MappedFieldType mft) {
         if (!mft.hasDocValues()) return "NONE";
         
         DocValuesType dvt = mft.docValuesType();
@@ -82,7 +82,7 @@ public class FieldInfoItem {
             
         if ("text".equals(mft.typeName())) {
             try {
-                mft.fielddataBuilder();
+                mft.fielddataBuilder(index);
                 return "FIELDDATA";
             } catch(Throwable th) {}
         }

@@ -8,7 +8,7 @@ apply plugin: 'eclipse'
 apply plugin: 'com.github.ngyewch.git-version' 
 
 group = 'nl.bitmanager'
-version = '6.0.0'
+version = '6.3.0'
 
 description = """bitmanager-elasticsearch-plugin"""
 project.ext { version2 = version }
@@ -36,12 +36,11 @@ repositories {
      maven { url "http://repo.maven.apache.org/maven2" }
 }
 dependencies {
-    compile group: 'org.elasticsearch', name: 'elasticsearch', version:'6.0.0'
-    compile group: 'org.elasticsearch.plugin', name: 'parent-join-client', version: '6.0.0'
+    compile group: 'org.elasticsearch', name: 'elasticsearch', version:'6.3.0'
+    compile group: 'org.elasticsearch.plugin', name: 'parent-join-client', version: '6.3.0'
     compile group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.8.2'
-    compile group: 'org.apache.lucene', name: 'lucene-spatial', version:'7.0.1'
-    testCompile group: 'org.elasticsearch.client', name: 'transport', version:'6.0.0'
+    testCompile group: 'org.elasticsearch.client', name: 'transport', version:'6.3.0'
     testCompile group: 'junit', name: 'junit', version:'4.10'
-    testCompile group: 'org.apache.lucene', name: 'lucene-test-framework', version:'7.0.1'
+    testCompile group: 'org.apache.lucene', name: 'lucene-test-framework', version:'7.3.0'
     testCompile group: 'org.hamcrest', name: 'hamcrest-all', version:'1.3'
 }

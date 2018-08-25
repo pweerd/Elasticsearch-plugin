@@ -32,6 +32,7 @@ import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
 public class NodeVersion extends TransportItemBase {
@@ -47,11 +48,11 @@ public class NodeVersion extends TransportItemBase {
 
 	NodeVersion() {
 		esVersion = org.elasticsearch.Version.CURRENT;
-		esSettings = Plugin.ESSettings.getAsMap();
+		esSettings = asMap (Plugin.ESSettings);
 	}
 
 	public NodeVersion(String node, String version, URL location) {
-		esSettings = Plugin.ESSettings.getAsMap();
+        esSettings = asMap (Plugin.ESSettings);
 		esVersion = org.elasticsearch.Version.CURRENT;
 		this.node = node;
 		this.version = version;
@@ -68,6 +69,14 @@ public class NodeVersion extends TransportItemBase {
 			}
 		}
 	}
+    
+    private static Map<String,String> asMap (Settings x) {
+        Map<String,String> ret = new HashMap<String,String>(x.size());
+        for (String key: x.keySet()) {
+            ret.put(key, x.get(key));
+        }
+        return ret;
+    }
 
 	public String getVersion() {
 		return version;

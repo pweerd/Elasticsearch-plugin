@@ -26,8 +26,10 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity;
+import org.elasticsearch.Version;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.index.similarity.AbstractSimilarityProvider;
+import org.elasticsearch.index.similarity.SimilarityProvider;
+import org.elasticsearch.script.ScriptService;
 
 public class BoundedSimilarity extends Similarity {
     public BoundedSimilaritySettings settings;
@@ -36,6 +38,11 @@ public class BoundedSimilarity extends Similarity {
         this.settings = settings;
     }
 
+    
+    public static Similarity create (Settings settings, Version version, ScriptService scriptService) {
+        return new BoundedSimilarity(new BoundedSimilaritySettings(settings));
+    }
+    
     @Override
     public long computeNorm(FieldInvertState state) {
         BoundedSimilaritySettings settings = this.settings;
@@ -52,24 +59,5 @@ public class BoundedSimilarity extends Similarity {
         return ((BoundedWeight) weight).createScorer(context);
     }
 
-    public static class Provider extends AbstractSimilarityProvider {
-        private BoundedSimilarity similarity;
-        private BoundedSimilaritySettings settings;
-
-        public Provider(String name, Settings providerSettings, Settings indexSettings) {
-            super(name);
-            this.settings = new BoundedSimilaritySettings(providerSettings);
-            similarity = new BoundedSimilarity(this.settings);
-            // System.out.println("Loaded: " + toString());
-        }
-
-        public Similarity get() {
-            return similarity;
-        }
-
-        public String toString() {
-            return getClass().getSimpleName() + " (" + similarity.toString() + ")";
-        }
-    }
 
 }
