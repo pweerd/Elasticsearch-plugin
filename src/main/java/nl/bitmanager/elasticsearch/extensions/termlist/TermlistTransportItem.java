@@ -28,12 +28,10 @@ import java.util.regex.Pattern;
 
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.MultiFields;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
@@ -52,6 +50,7 @@ import org.elasticsearch.rest.RestRequest;
 import nl.bitmanager.elasticsearch.support.BytesRange;
 import nl.bitmanager.elasticsearch.support.IntRange;
 import nl.bitmanager.elasticsearch.support.RegexReplacers;
+import nl.bitmanager.elasticsearch.transport.ActionDefinition;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 import nl.bitmanager.elasticsearch.typehandlers.TypeHandler;
 
@@ -81,13 +80,14 @@ public class TermlistTransportItem extends TransportItemBase {
     private boolean requestRawText;
     private boolean collisionsOnly;
 
-    public TermlistTransportItem() {
-        termlist = new TermList(false);
+    public TermlistTransportItem(ActionDefinition definition) {
+        super(definition);
         sortType = new SortType();
+        termlist = new TermList(sortType);
     }
 
-    public TermlistTransportItem(RestRequest request) {
-        this();
+    public TermlistTransportItem(ActionDefinition definition, RestRequest request) {
+        super(definition);
         fields = nullIfEmpty(request.param(P_FIELD));
         term = request.param("term");
         range = nullIfEmpty(request.param(P_RANGE));
@@ -104,7 +104,8 @@ public class TermlistTransportItem extends TransportItemBase {
         collisionsOnly = request.paramAsBoolean(P_COLLISIONS_ONLY, true);
 
         this.sortType = new SortType (request.param(P_SORT));
-        
+        termlist = new TermList (sortType);
+
         //Check the format
         new IntRange (count_range);
         new IntRange (length_range);
@@ -113,7 +114,7 @@ public class TermlistTransportItem extends TransportItemBase {
     }
 
     public TermlistTransportItem(TermlistTransportItem other) {
-        this();
+        super(other.definition);
         fields = other.fields;
         term = other.term;
         filterExpr = other.filterExpr;
@@ -128,9 +129,50 @@ public class TermlistTransportItem extends TransportItemBase {
         resultLimit = other.resultLimit;
         collisionsOnly = other.collisionsOnly;
         sortType = other.sortType;
+        termlist = new TermList (sortType);
         range = other.range;
         initCachedObjects();
     }
+    
+    public TermlistTransportItem(ActionDefinition definition, StreamInput in) throws IOException {
+        super(definition, in);
+        fields = readStr(in);
+        range = readStr(in);
+        filterExpr = readStr(in);
+        notFilterExpr = readStr(in);
+        outputType = readStr(in);
+        sortType = new SortType(in.readVInt());
+        term = readStr(in);
+        mode = in.readVInt();
+        resultLimit = in.readVInt();
+        count_range = readStr(in);
+        length_range = readStr(in);
+        replExpr = readStr(in);
+        collisionsOnly = in.readBoolean();
+        termlist = new TermList (sortType);
+        termlist.loadFromStream(in);
+        initCachedObjects();
+    }
+
+    public void writeTo(StreamOutput out) throws IOException {
+        System.out.println(String.format("SHARDREQ: strm=%s, field=%s", out, fields));
+        super.writeTo (out);
+        writeStr(out, fields);
+        writeStr(out, range);
+        writeStr(out, filterExpr);
+        writeStr(out, notFilterExpr);
+        writeStr(out, outputType);
+        out.writeVInt(sortType.order);
+        writeStr(out, term);
+        out.writeVInt(mode);
+        out.writeVInt(resultLimit);
+        writeStr(out, count_range);
+        writeStr(out, length_range);
+        writeStr(out, replExpr);
+        out.writeBoolean(collisionsOnly);
+        termlist.saveToStream(out);
+    }
+
 
     public boolean isTextRequest() {
         return requestRawText;
@@ -223,42 +265,6 @@ public class TermlistTransportItem extends TransportItemBase {
         return Pattern.compile(notFilterExpr);
     }
 
-    public void readFrom(StreamInput in) throws IOException {
-        fields = readStr(in);
-        range = readStr(in);
-        filterExpr = readStr(in);
-        notFilterExpr = readStr(in);
-        outputType = readStr(in);
-        sortType = new SortType(in.readVInt());
-        term = readStr(in);
-        mode = in.readVInt();
-        resultLimit = in.readVInt();
-        count_range = readStr(in);
-        length_range = readStr(in);
-        replExpr = readStr(in);
-        collisionsOnly = in.readBoolean();
-        termlist = new TermList (sortType.order == (SortType.SORT_REVERSE | SortType.SORT_TERM));
-        termlist.loadFromStream(in);
-        initCachedObjects();
-    }
-
-    public void writeTo(StreamOutput out) throws IOException {
-        System.out.println(String.format("SHARDREQ: strm=%s, field=%s", out, fields));
-        writeStr(out, fields);
-        writeStr(out, range);
-        writeStr(out, filterExpr);
-        writeStr(out, notFilterExpr);
-        writeStr(out, outputType);
-        out.writeVInt(sortType.order);
-        writeStr(out, term);
-        out.writeVInt(mode);
-        out.writeVInt(resultLimit);
-        writeStr(out, count_range);
-        writeStr(out, length_range);
-        writeStr(out, replExpr);
-        out.writeBoolean(collisionsOnly);
-        termlist.saveToStream(out);
-    }
 
     @Override
     protected void consolidateResponse(TransportItemBase other) {
@@ -311,24 +317,27 @@ public class TermlistTransportItem extends TransportItemBase {
     }
     
     public void processShard (IndexShard indexShard) throws Exception {
-        // indexShard.store().directory();
         Searcher searcher = indexShard.acquireSearcher("termlist");
+        searcher.getIndexReader().getContext().leaves();
         try {
-            IndexReader rdr = searcher.reader();
-            System.out.println("getTerm=" + term);
-            if (term == null)
-                extractTerms(rdr, indexShard);
-            else
-                extractFields(rdr, indexShard);
+            for (LeafReaderContext c : searcher.getIndexReader().getContext().leaves()) {
+                LeafReader rdr = c.reader();
+                System.out.println("getTerm=" + term);
+                if (term == null)
+                    extractTerms(rdr, indexShard);
+                else
+                    extractFields(rdr, indexShard);
+            }
         } finally {
             searcher.close();
         }
     }
 
-    private void extractTerms(IndexReader rdr, IndexShard indexShard) throws Exception {
-        FieldInfos fieldInfos = MultiFields.getMergedFieldInfos(rdr);
-        Fields luceneFields = MultiFields.getFields(rdr);
-        if (fieldInfos == null || luceneFields == null || fieldInfos.size() == 0)
+    private void extractTerms(LeafReader rdr, IndexShard indexShard) throws Exception {
+        
+        FieldInfos fieldInfos = rdr.getFieldInfos();
+        //Fields luceneFields = MultiFields.getFields(rdr);
+        if (fieldInfos == null || fieldInfos.size() == 0)
             return;
 
         Pattern pattern = createPattern();
@@ -345,9 +354,9 @@ public class TermlistTransportItem extends TransportItemBase {
                    continue;
                 }
                 System.out.printf("MappedFieldType for %s : %s\n", fieldInfo.name, mft==null ? "null": mft.getClass().getName());
-                TypeHandler typeHandler = TypeHandler.create(mft);
+                TypeHandler typeHandler = TypeHandler.create(mft, fieldInfo.name);
                 termlist.setType(typeHandler.typeName);
-                Terms terms = luceneFields.terms(fieldInfo.name);
+                Terms terms = rdr.terms(fieldInfo.name);
                 ShardFieldStats stats = terms != null ? new ShardFieldStats(terms) : extractPointStats (rdr, fieldInfo.name);
                 //FieldData fdt;
 //                org.elasticsearch.index.mapper.TextFieldMapper.TextFieldType
@@ -358,7 +367,7 @@ public class TermlistTransportItem extends TransportItemBase {
 
                 BytesRange range = this.range == null ? null : new BytesRange (this.range, typeHandler);
                 if (terms == null) {
-                    if (fieldInfo.getPointDimensionCount() > 0 && fieldInfo.getPointNumBytes() >= 0)
+                    if (fieldInfo.getPointDataDimensionCount() > 0 && fieldInfo.getPointNumBytes() >= 0) //PW7 kijk ook voor index variant
                         extractPointTerms(termlist, range, rdr, fieldInfo.name);
                     continue;
                 }
@@ -396,21 +405,22 @@ public class TermlistTransportItem extends TransportItemBase {
         }
     }
 
-    private void extractFields(IndexReader rdr, IndexShard indexShard) throws IOException {
-        Fields fields = MultiFields.getFields(rdr);
-        if (fields == null)
+    private void extractFields(LeafReader rdr, IndexShard indexShard) throws IOException {
+        FieldInfos fields = rdr.getFieldInfos();
+        if (fields == null || fields.size()==0)
             return;
 
         String strTerm = this.term;
         TypeHandler typeHandler = TypeHandler.create("text");
-        for (String field : fields) {
-            if (field.charAt(0) == '_')
+        for (FieldInfo field : fields) {
+            String name = field.name;
+            if (name.charAt(0) == '_')
                 continue;
 
-            Term term = new Term(field, strTerm);
+            Term term = new Term(name, strTerm);
             int docFreq = rdr.docFreq(term);
             if (docFreq > 0)
-                termlist.add(typeHandler.toBytes(field), true, docFreq);
+                termlist.add(typeHandler.toBytes(name), true, docFreq);
         }
     }
 

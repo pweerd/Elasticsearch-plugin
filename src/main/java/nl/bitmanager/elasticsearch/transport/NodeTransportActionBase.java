@@ -19,6 +19,7 @@
 
 package nl.bitmanager.elasticsearch.transport;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
@@ -29,6 +30,7 @@ import org.elasticsearch.action.support.nodes.TransportNodesAction;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
@@ -37,14 +39,20 @@ import nl.bitmanager.elasticsearch.support.Utils;
 
 public abstract class NodeTransportActionBase
         extends TransportNodesAction<NodeBroadcastRequest, NodeBroadcastResponse, NodeRequest, NodeResponse> {
-    public final boolean debug;
     protected final NodeActionDefinitionBase definition;
+    public    final boolean debug;
 
     protected NodeTransportActionBase(NodeActionDefinitionBase definition, Settings settings, ThreadPool threadPool,
             ClusterService clusterService, TransportService transportService, ActionFilters actionFilters,
             IndexNameExpressionResolver indexNameExpressionResolver) {
-        super(settings, definition.name(), threadPool, clusterService, transportService, actionFilters, indexNameExpressionResolver,
-                new NodeBroadcastRequest.Factory(definition), new NodeRequest.Factory(definition), ThreadPool.Names.GENERIC,
+        super(definition.name, 
+                threadPool, 
+                clusterService, 
+                transportService, 
+                actionFilters,
+                (in)->definition.createBroadcastRequest(in),
+                (in)->definition.createNodeRequest(in),
+                ThreadPool.Names.GENERIC,
                 NodeResponse.class);
         this.definition = definition;
         this.debug = definition.debug;
@@ -52,10 +60,17 @@ public abstract class NodeTransportActionBase
     }
 
     @Override
-    protected NodeRequest newNodeRequest(String nodeId, NodeBroadcastRequest request) {
+    protected NodeRequest newNodeRequest(NodeBroadcastRequest request) {
         if (debug)
             System.out.printf("[%s]: newNodeRequest()\n", definition.id);
-        return new NodeRequest(request, nodeId);
+        return new NodeRequest(request);
+    }
+    
+    @Override
+    protected NodeResponse newNodeResponse (StreamInput in) throws IOException {
+        if (debug)
+            System.out.printf("[%s]: newNodeRequest()\n", definition.id);
+        return new NodeResponse(definition, in);
     }
 
     @Override
@@ -83,18 +98,11 @@ public abstract class NodeTransportActionBase
         DiscoveryNode node = null;
         try {
             node = clusterService.localNode();
-            return new NodeResponse(node, handleNodeRequest(request));
+            return new NodeResponse(definition, node, handleNodeRequest(request));
         } catch (Throwable e) {
-            logger.error("Node ransport error: " + e.getMessage(), e);
-            return new NodeResponse(node, e);
+            definition.logger.error("Node transport error: " + e.getMessage(), e);
+            return new NodeResponse(definition, node, e);
         }
-    }
-
-    @Override
-    protected NodeResponse newNodeResponse() {
-        if (debug)
-            System.out.printf("[%s]: newNodeResponse()\n", definition.id);
-        return new NodeResponse(definition.createTransportItem());
     }
 
 }

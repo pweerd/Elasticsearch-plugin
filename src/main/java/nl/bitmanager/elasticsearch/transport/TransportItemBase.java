@@ -32,7 +32,6 @@ import java.util.TreeSet;
 
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import org.elasticsearch.common.io.stream.Streamable;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
@@ -45,24 +44,26 @@ import nl.bitmanager.elasticsearch.support.Utils;
  * @author pweerd
  * 
  */
-public abstract class TransportItemBase implements Streamable, ToXContent {
+public abstract class TransportItemBase implements ToXContent {
+    protected final ActionDefinition definition;
 
-    /** Help to identify where this transportitem came from */
-    public final String creationId;
-
-    protected TransportItemBase() {
-        creationId = String.format("ctr[%d]", System.identityHashCode(this));
+    protected TransportItemBase (ActionDefinition definition) {
+        this.definition = definition;
     }
 
-    protected TransportItemBase(String what) {
-        creationId = String.format("%s[%d]", what, System.identityHashCode(this));
+    protected TransportItemBase (ActionDefinition definition, StreamInput in) throws IOException {
+        this.definition = definition;
     }
-
+    
     @Override
     public String toString() {
-        return String.format("%s, creationid=%s", Utils.getTrimmedClass(this), creationId);
+        return String.format("%s, creationid=%s", Utils.getTrimmedClass(this), System.identityHashCode(this));
     }
 
+    protected void writeTo(StreamOutput out) throws IOException
+    {
+    }
+    
     protected abstract void consolidateResponse(TransportItemBase other);
 
     public static String readStr(StreamInput in) throws IOException {

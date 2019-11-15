@@ -30,7 +30,7 @@ public class BytesHandler extends TypeHandlerBase {
     public final static BytesHandler instance = new BytesHandler("byte", false);
 
     protected BytesHandler(String type, boolean known) {
-        super(type, known);
+        super(type, null, known);
     }
 
     @Override

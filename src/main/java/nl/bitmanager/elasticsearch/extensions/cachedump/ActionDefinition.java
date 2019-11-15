@@ -19,29 +19,31 @@
 
 package nl.bitmanager.elasticsearch.extensions.cachedump;
 
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.plugins.ActionPlugin.ActionHandler;
+import java.io.IOException;
 
+import org.elasticsearch.common.io.stream.StreamInput;
 import nl.bitmanager.elasticsearch.transport.NodeActionDefinitionBase;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 public class ActionDefinition extends NodeActionDefinitionBase {
 
 	public static final ActionDefinition INSTANCE;
-    public static final ActionHandler<? extends ActionRequest, ? extends ActionResponse> HANDLER;
     static {
 		INSTANCE = new ActionDefinition();
-        HANDLER = new ActionHandler(INSTANCE, TransportAction.class);
     }
 
    private ActionDefinition() {
-      super("cache/dump", false);
+      super(TransportAction.class, "cluster:admin:cache/dump", true);
    }
 
     @Override
     public TransportItemBase createTransportItem() {
-        return new CacheDumpTransportItem();
+        return new CacheDumpTransportItem(this);
+    }
+
+    @Override
+    public TransportItemBase createTransportItem(StreamInput in) throws IOException {
+        return new CacheDumpTransportItem(this, in);
     }
 
 }

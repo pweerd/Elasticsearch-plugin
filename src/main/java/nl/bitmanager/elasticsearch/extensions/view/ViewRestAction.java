@@ -25,7 +25,6 @@ import java.io.IOException;
 
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
@@ -38,17 +37,17 @@ import nl.bitmanager.elasticsearch.transport.ShardBroadcastResponse;
 public class ViewRestAction extends BaseRestHandler {
 
     @Inject
-    public ViewRestAction(Settings settings, RestControllerWrapper c) {
-        super(settings);
+    public ViewRestAction(RestControllerWrapper c) {
+        super();
         c.registerHandler(GET, "/{index}/{type}/{id}/_view", this);
     }
 
     @Override
     public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
-        ViewTransportItem item = new ViewTransportItem(request);
+        ViewTransportItem item = new ViewTransportItem(ActionDefinition.INSTANCE, request);
         ShardBroadcastRequest broadcastRequest = new ShardBroadcastRequest(ActionDefinition.INSTANCE, item, request.param("index"));
         try {
-            return channel -> client.admin().indices().execute(ActionDefinition.INSTANCE, broadcastRequest,
+            return channel -> client.admin().indices().execute(ActionDefinition.INSTANCE.actionType, broadcastRequest,
                     new RestToXContentListener<ShardBroadcastResponse>(channel));
         } catch (Exception e) {
             e.printStackTrace();
@@ -58,7 +57,7 @@ public class ViewRestAction extends BaseRestHandler {
 
     @Override
     public String getName() {
-        return ActionDefinition.INSTANCE.name();
+        return ActionDefinition.INSTANCE.name;
     }
 
 }

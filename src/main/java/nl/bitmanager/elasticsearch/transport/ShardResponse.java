@@ -27,28 +27,19 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.index.shard.ShardId;
 
 public class ShardResponse extends BroadcastShardResponse {
-    public final ShardActionDefinitionBase definition;
-    private TransportItemBase transportItem;
+    public  final ShardActionDefinitionBase definition;
+    private final TransportItemBase transportItem;
 
     public ShardResponse(ShardActionDefinitionBase definition, ShardId shardId, TransportItemBase item) {
         super(shardId);
         this.definition = definition;
-        this.transportItem = item;
+        this.transportItem = item; 
     }
 
-    public ShardResponse(ShardActionDefinitionBase definition) {
+    public ShardResponse(ShardActionDefinitionBase definition, StreamInput in) throws IOException {
+        super (in);
         this.definition = definition;
-    }
-
-    public TransportItemBase getTransportItem() {
-        return transportItem;
-    }
-
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        super.readFrom(in);
-        transportItem = definition.createTransportItem();
-        transportItem.readFrom(in);
+        transportItem = definition.createTransportItem(in);
     }
 
     @Override
@@ -56,4 +47,9 @@ public class ShardResponse extends BroadcastShardResponse {
         super.writeTo(out);
         transportItem.writeTo(out);
     }
+
+    public TransportItemBase getTransportItem() {
+        return transportItem;
+    }
+
 }

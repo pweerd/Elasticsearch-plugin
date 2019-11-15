@@ -31,17 +31,12 @@ import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
 public class NodeBroadcastResponse extends BaseNodesResponse<NodeResponse> implements ToXContentObject {
-    public final NodeActionDefinitionBase definition;
-    private TransportItemBase transportItem;
+    public  final NodeActionDefinitionBase definition;
+    private final TransportItemBase transportItem;
 
-    public NodeBroadcastResponse(NodeActionDefinitionBase action) {
-        definition = action;
-        transportItem = action.createTransportItem();
-    }
-
-    public NodeBroadcastResponse(NodeActionDefinitionBase action, ClusterName clusterName, List<NodeResponse> responses,  List<FailedNodeException> failures) {
+    public NodeBroadcastResponse(NodeActionDefinitionBase definition, ClusterName clusterName, List<NodeResponse> responses,  List<FailedNodeException> failures) {
         super(clusterName, responses, failures);
-        definition = action;
+        this.definition = definition;
         TransportItemBase result = null;
         if (responses != null) {
             for (NodeResponse resp : responses) {
@@ -52,17 +47,13 @@ public class NodeBroadcastResponse extends BaseNodesResponse<NodeResponse> imple
                     result.consolidateResponse(item);
             }
         }
-        transportItem = result != null ? result : action.createTransportItem();
+        transportItem = result != null ? result : definition.createTransportItem();
     }
 
-    public TransportItemBase getTransportItem() {
-        return transportItem;
-    }
-
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        super.readFrom(in);
-        transportItem.readFrom(in);
+    public NodeBroadcastResponse(NodeActionDefinitionBase definition, StreamInput in) throws IOException {
+        super(in);
+        this.definition = definition;
+        transportItem = definition.createTransportItem(in);
     }
 
     @Override
@@ -71,58 +62,61 @@ public class NodeBroadcastResponse extends BaseNodesResponse<NodeResponse> imple
         transportItem.writeTo(out);
     }
 
+    public TransportItemBase getTransportItem() {
+        return transportItem;
+    }
+
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
 
-        // PW buildBroadcastNodesHeader (builder);
         builder.startObject();
-        if (transportItem != null) 
+        buildBroadcastNodesHeader(builder);
+        if (transportItem != null) {
+            builder.startObject("result");
             transportItem.toXContent(builder, params);
+            builder.endObject();
+        }
         builder.endObject();
         return builder;
     }
 
-    // PW
-    // public void buildBroadcastNodesHeader(XContentBuilder builder) throws
-    // IOException {
-    // builder.startObject("_nodes");
-    // int failed=0;
-    // int success=0;
-    //
-    // for (NodeResponse x: super.nodes) {
-    // if (x.getError()==null) success++; else failed++;
-    // }
-    // builder.field("total", failed+success);
-    // builder.field("successful", success);
-    // builder.field("failed", failed);
-    // if (failed != 0) {
-    // builder.startArray("failures");
-    // for (NodeResponse x: super.nodes) {
-    // if (x.getError()==null) continue;
-    // builder.startObject();
-    // builder.field("node", x.getNode().toString());
-    // builder.field("reason", x.getError().toString());
-    // builder.endObject();
-    // }
-    // builder.endArray();
-    // }
-    // builder.endObject();
-    // }
+    public void buildBroadcastNodesHeader(XContentBuilder builder) throws IOException {
+        builder.startObject("_nodes");
+        int failed = 0;
+        int success = 0;
 
-    public NodeResponse readResponse(StreamInput in) throws IOException {
-        NodeResponse resp = new NodeResponse(definition.createTransportItem());
-        resp.readFrom(in);
-        return resp;
+        for (NodeResponse x : super.getNodes()) {
+            if (x.getError() == null)
+                success++;
+            else
+                failed++;
+        }
+        builder.field("total", failed + success);
+        builder.field("successful", success);
+        builder.field("failed", failed);
+        if (failed != 0) {
+            builder.startArray("failures");
+            for (NodeResponse x : super.getNodes()) {
+                if (x.getError() == null)
+                    continue;
+                builder.startObject();
+                builder.field("node", x.getNode().toString());
+                builder.field("reason", x.getError().toString());
+                builder.endObject();
+            }
+            builder.endArray();
+        }
+        builder.endObject();
     }
 
     @Override
     protected List<NodeResponse> readNodesFrom(StreamInput in) throws IOException {
-        return in.readList((s) -> readResponse(s));
+        return in.readList((x) -> new NodeResponse(definition, x));
     }
 
     @Override
     protected void writeNodesTo(StreamOutput out, List<NodeResponse> nodes) throws IOException {
-        out.writeStreamableList(nodes);
+        out.writeList(nodes);
     }
 
 }

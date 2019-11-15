@@ -25,22 +25,18 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 
 import nl.bitmanager.elasticsearch.extensions.RestControllerWrapper;
-import nl.bitmanager.elasticsearch.extensions.view.ActionDefinition;
+//pw7 import nl.bitmanager.elasticsearch.extensions.view.ActionDefinition;
 import nl.bitmanager.elasticsearch.support.HtmlRestResponse;
 import nl.bitmanager.elasticsearch.support.Utils;
 
 public class HelpRestAction extends BaseRestHandler {
 
-    @Inject
-    public HelpRestAction(Settings settings, RestControllerWrapper c) {
-        super(settings);
+    public HelpRestAction (RestControllerWrapper c) {
         c.registerHandler(GET, "/_bm", this);
     }
 
@@ -70,6 +66,6 @@ public class HelpRestAction extends BaseRestHandler {
 
     @Override
     public String getName() {
-        return ActionDefinition.INSTANCE.name();
+        return "_bm";
     }
 }

@@ -23,6 +23,7 @@ import java.io.IOException;
 
 import org.apache.lucene.util.NumericUtils;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 import org.joda.time.DateTime;
 import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
@@ -33,7 +34,7 @@ import org.joda.time.format.DateTimeParser;
 public class DateHandler extends Int64Handler {
 
     protected DateHandler(String type) {
-        super(type);
+        super(type, NumericType.DATE, true);
     }
 
     protected static Object[] convertToDate (Object[] arr) {

@@ -19,9 +19,9 @@
 
 package nl.bitmanager.elasticsearch.extensions.view;
 
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.plugins.ActionPlugin.ActionHandler;
+import java.io.IOException;
+
+import org.elasticsearch.common.io.stream.StreamInput;
 
 import nl.bitmanager.elasticsearch.transport.ShardActionDefinitionBase;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
@@ -29,20 +29,23 @@ import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 public class ActionDefinition extends ShardActionDefinitionBase {
 
     public static final ActionDefinition INSTANCE;
-    public static final ActionHandler<? extends ActionRequest, ? extends ActionResponse> HANDLER;
 
     static {
         INSTANCE = new ActionDefinition();
-        HANDLER = new ActionHandler(INSTANCE, TransportAction.class);
     }
 
     private ActionDefinition() {
-       super("docinverter", false, ShardActionDefinitionBase.ShardsEnum.PRIMARY, false);
+       super( TransportAction.class, "docinverter", false, ShardActionDefinitionBase.ShardsEnum.PRIMARY, false);
     }
 
      @Override
      public TransportItemBase createTransportItem() {
-         return new ViewTransportItem();
+         return new ViewTransportItem(this);
      }
+
+    @Override
+    public TransportItemBase createTransportItem(StreamInput in) throws IOException {
+        return new ViewTransportItem(this, in);
+    }
 
  }

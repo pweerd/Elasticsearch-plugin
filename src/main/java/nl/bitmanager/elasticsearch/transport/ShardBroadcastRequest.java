@@ -20,18 +20,15 @@
 package nl.bitmanager.elasticsearch.transport;
 
 import java.io.IOException;
-import java.util.function.Supplier;
 
-import org.elasticsearch.action.Action;
 import org.elasticsearch.action.support.broadcast.BroadcastRequest;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import org.elasticsearch.rest.RestRequest;
 
 public class ShardBroadcastRequest extends BroadcastRequest<ShardBroadcastRequest> {
     public final ShardActionDefinitionBase definition;
-    private TransportItemBase transportItem;
+    private final TransportItemBase transportItem;
     protected final String id;
 
     public ShardBroadcastRequest(ShardActionDefinitionBase definition, TransportItemBase transportItem, String indexes) {
@@ -41,9 +38,28 @@ public class ShardBroadcastRequest extends BroadcastRequest<ShardBroadcastReques
         this.transportItem = transportItem;
     }
 
+    public ShardBroadcastRequest(ShardActionDefinitionBase definition, StreamInput in) throws IOException {
+        super(in);
+        this.definition = definition;
+        this.id = definition.id + ".ShardBroadcastRequest";
+        if (definition.debug)
+            System.out.printf("[%s]: readFrom\n", id);
+        transportItem = definition.createTransportItem();
+    }
+
+
     public ShardBroadcastRequest(ShardActionDefinitionBase definition) {
         this(definition, definition.createTransportItem(), null);
     }
+
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        if (definition.debug)
+            System.out.printf("[%s]: writeTo item=%s\n", id, transportItem);
+        super.writeTo(out);
+        transportItem.writeTo(out);
+    }
+
 
     // public ShardBroadcastRequest(TransportItemBase item) {
     // transportItem = item;
@@ -83,38 +99,5 @@ public class ShardBroadcastRequest extends BroadcastRequest<ShardBroadcastReques
         return transportItem;
     }
 
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        if (definition.debug)
-            System.out.printf("[%s]: readFrom\n", id);
-        super.readFrom(in);
-        transportItem = definition.createTransportItem();
-        transportItem.readFrom(in);
-    }
-
-    @Override
-    public void writeTo(StreamOutput out) throws IOException {
-        if (definition.debug)
-            System.out.printf("[%s]: writeTo item=%s\n", id, transportItem);
-        super.writeTo(out);
-        transportItem.writeTo(out);
-    }
-
-    /** Factory to passthrough the actiondefinition */
-    public static class Factory implements Supplier<ShardBroadcastRequest> {
-        public final ShardActionDefinitionBase definiton;
-
-        public Factory(ShardActionDefinitionBase definiton) {
-            this.definiton = definiton;
-        }
-
-        @Override
-        public ShardBroadcastRequest get() {
-            if (definiton.debug)
-                System.out.println("new ShardBroadcastRequest()");
-            return new ShardBroadcastRequest(definiton);
-        }
-
-    }
 
 }

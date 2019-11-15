@@ -20,45 +20,27 @@
 package nl.bitmanager.elasticsearch.transport;
 
 import java.io.IOException;
-import java.util.function.Supplier;
 
 import org.elasticsearch.action.support.nodes.BaseNodeRequest;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 
 public class NodeRequest extends BaseNodeRequest {
-    public final NodeActionDefinitionBase definition;
-    private TransportItemBase transportItem;
+    public    final NodeActionDefinitionBase definition;
+    private   final TransportItemBase transportItem;
     protected final String id;
 
-    public NodeRequest(NodeBroadcastRequest request, String nodeId) {
-        super(nodeId);
+    public NodeRequest(NodeBroadcastRequest request) {
         this.definition = request.definition;
         this.transportItem = request.getTransportItem();
         this.id = getId(definition);
     }
 
-    public NodeRequest(NodeActionDefinitionBase definition) {
+    public NodeRequest(NodeActionDefinitionBase definition, StreamInput in) throws IOException {
+        super(in);
         this.definition = definition;
         this.id = getId(definition);
-        this.transportItem = definition.createTransportItem();
-    }
-
-    private static String getId(NodeActionDefinitionBase definition) {
-        return definition.id + ".NodeRequest";
-    }
-
-    public TransportItemBase getTransportItem() {
-        return transportItem;
-    }
-
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        if (definition.debug)
-            System.out.printf("[%s]: readFrom\n", id);
-        super.readFrom(in);
-        transportItem = definition.createTransportItem();
-        transportItem.readFrom(in);
+        this.transportItem = definition.createTransportItem(in);
     }
 
     @Override
@@ -69,21 +51,12 @@ public class NodeRequest extends BaseNodeRequest {
         transportItem.writeTo(out);
     }
 
-    /** Factory to passthrough the actiondefinition */
-    public static class Factory implements Supplier<NodeRequest> {
-        public final NodeActionDefinitionBase definition;
+    private static String getId(NodeActionDefinitionBase definition) {
+        return definition.id + ".NodeRequest";
+    }
 
-        public Factory(NodeActionDefinitionBase definition) {
-            this.definition = definition;
-        }
-
-        @Override
-        public NodeRequest get() {
-            if (definition.debug)
-                System.out.println("new NodeRequest()");
-            return new NodeRequest(definition);
-        }
-
+    public TransportItemBase getTransportItem() {
+        return transportItem;
     }
 
 }

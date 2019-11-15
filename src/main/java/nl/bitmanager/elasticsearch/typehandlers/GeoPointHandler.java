@@ -29,7 +29,7 @@ import org.elasticsearch.index.fielddata.plain.AbstractAtomicGeoPointFieldData;
 public class GeoPointHandler extends SafeTypeHandler {
 
     protected GeoPointHandler(String type) {
-        super(type);
+        super(type, null, true);
     }
 
     @Override

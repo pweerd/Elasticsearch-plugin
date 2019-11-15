@@ -20,11 +20,12 @@
 package nl.bitmanager.elasticsearch.typehandlers;
 
 import org.apache.lucene.util.NumericUtils;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 
 public class Float32Handler extends Float64Handler {
 
     protected Float32Handler(String type) {
-        super(type);
+        super(type, NumericType.FLOAT, true);
     }
 
     @Override

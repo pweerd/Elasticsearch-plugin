@@ -28,13 +28,13 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.join.BitSetProducer;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
-import org.elasticsearch.Version;
 import org.elasticsearch.common.lucene.search.Queries;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.util.LongArray;
@@ -49,6 +49,10 @@ import org.elasticsearch.search.internal.ContextIndexSearcher;
 import org.elasticsearch.search.internal.SearchContext;
 
 public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleValue {
+    private final int debug_lvl;
+    private final boolean cache_bitsets;
+    private final boolean compensateNonExisting;
+
     private final WithOrdinals[] valuesSources;
     private final ParentValueSourceConfig valuesSourceConfigs[];
     
@@ -69,7 +73,7 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
     /** holds bitset per ordinal. Only used in parent updups */
     private ObjectArray<FixedBitSet> bitsetPerBucket; // administrate all parent ords per bucket
     private int maxBucket;
-    private final boolean cache_bitsets;
+
 
 
     protected UndupByParentsAggregator(UndupByParentsAggregatorFactory factory,
@@ -83,6 +87,8 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
         this.valuesSources = valuesSources;
         this.valuesSourceConfigs = factory.valuesSourceConfigs;
         this.cache_bitsets = factory.cache_bitsets;
+        this.compensateNonExisting = factory.compensateNonExisting;
+        this.debug_lvl = factory.debug_lvl;
         
         if (valuesSources[0] == null) { //1st level is reverseNested?
             mainDocsFilter = Queries.newNonNestedFilter(context.mapperService().getIndexSettings().getIndexVersionCreated()); 
@@ -105,7 +111,7 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
             firstLevelDocValues = getDocvaluesForAllSegments (first);
 
             bitsetPerBucket = context.bigArrays().newObjectArray(maxBucket);
-            if (UndupByParentsAggregatorBuilder.DEBUG)
+            if (debug_lvl > 0)
                 System.out.printf("Allocated %d bucket bitsets in advance for the 1st level\n", bitsetPerBucket.size());
         }
 
@@ -122,7 +128,7 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
         else
             ret = new IntermediateParentCollector (this, ctx);
         
-        if (UndupByParentsAggregatorBuilder.DEBUG)
+        if (debug_lvl > 0)
             System.out.printf("return leafColl: %s\n", ret.getClass().getSimpleName());
         return ret;
     }
@@ -140,16 +146,16 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
 
     @Override
     public InternalAggregation buildEmptyAggregation() {
-        if (UndupByParentsAggregatorBuilder.DEBUG) System.out.printf("-- buildEmptyAggregation\n");
+        if (debug_lvl > 0) System.out.printf("-- buildEmptyAggregation\n");
         return new UndupByParentsInternal (name, 0, pipelineAggregators(), metaData());
     }
 
     @Override
     protected void doPostCollection() throws IOException {
-        if (UndupByParentsAggregatorBuilder.DEBUG) System.out.println("POST");
+        if (debug_lvl > 0) System.out.println("POST");
         //Reverse nested only?
         if (docCounts != null) {
-            if (UndupByParentsAggregatorBuilder.DEBUG) System.out.printf("POST: only revrse: converting %d counts\n", docCounts.size());
+            if (debug_lvl > 0) System.out.printf("POST: only revrse: converting %d counts\n", docCounts.size());
             this.counts = context.bigArrays().newLongArray(docCounts.size());
             for (int i=0; i<docCounts.size(); i++) {
                 DocCount dc = docCounts.get(i);
@@ -167,13 +173,8 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
         //Check special case: we had only 1 level of parent-childs
         //In which case we can simply return the bit counts
         if (valuesSources.length - first == 1) {
-            this.counts = context.bigArrays().newLongArray(bitsetPerBucket.size());
-            for (int i=0; i<bitsetPerBucket.size(); i++) {
-                FixedBitSet bitset = bitsetPerBucket.get(i);
-                if (bitset!=null)
-                    counts.set(i, bitset.cardinality());
-            }
-            bitsetPerBucket.close();
+            compensateForNonExisting();
+            this.counts = convertBitsetPerBucketIntoCounts (bitsetPerBucket);
             return;
         }
         
@@ -201,7 +202,7 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
             
             FixedBitSet combinedOrdinals = getCombinedOrdinals();
             
-            Weight w = valuesSourceConfigs[lvl-1].parentFilter.createWeight(context.searcher(),  false,  1.0f);
+            Weight w = valuesSourceConfigs[lvl-1].parentFilter.createWeight(context.searcher(), ScoreMode.COMPLETE_NO_SCORES, 1.0f);
             
             for (LeafReaderContext leaf : rootContext.leaves()) {
                 final SortedSetDocValues globalOrdinals = valuesSources[lvl-1].globalOrdinalsValues(leaf);
@@ -209,12 +210,12 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
 
                 final Bits liveDocs = leaf.reader().getLiveDocs();
                 if (this.cache_bitsets) {
-                    if (UndupByParentsAggregatorBuilder.DEBUG) System.out.printf("POST: undup via cache\n");
+                    if (debug_lvl > 0) System.out.printf("POST: undup via cache\n");
                     BitSet bits = context.bitsetFilterCache().getBitSetProducer(valuesSourceConfigs[lvl-1].parentFilter).getBitSet(leaf);
                     if (bits == null) continue;
                     undupSegment(bits, liveDocs, combinedOrdinals, globalOrdinals,  globalOrdinalsParent, nextBitsetPerBucket);
                 } else {
-                    if (UndupByParentsAggregatorBuilder.DEBUG) System.out.printf("POST: undup via doc iter\n");
+                    if (debug_lvl > 0) System.out.printf("POST: undup via doc iter\n");
                     Scorer parentScorer = w.scorer(leaf);
                     if (parentScorer == null) continue;
                     undupSegment(parentScorer.iterator(), liveDocs, combinedOrdinals, globalOrdinals, globalOrdinalsParent, nextBitsetPerBucket);
@@ -223,7 +224,57 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
             this.bitsetPerBucket.close();
             this.bitsetPerBucket = nextBitsetPerBucket;
         }
+        
+        compensateForNonExisting();
         this.counts = convertBitsetPerBucketIntoCounts (bitsetPerBucket);
+    }
+     
+    /**
+     * Compensating for non existing records is similar to what we do in parent undupping in doPostCollection.
+     * The big difference is that we don't have the ordinals for the next level.
+     * So, we don't need to check for them, we simply recalculate exactly the same bitset, but only for ordinals that 
+     * existed in the last level.
+     * So this is basically an exists function for all found ordinals
+     */
+    protected void compensateForNonExisting() throws IOException {
+        if (!compensateNonExisting) return;
+        if (debug_lvl > 0) System.out.println("compensateForNonExisting");
+        
+        ContextIndexSearcher searcher = context.searcher();
+        IndexReaderContext rootContext = searcher.getTopReaderContext();
+        final int bucketNum = 1 + getMaxBucket();
+        final int last = valuesSources.length-1;
+
+        //Allocate next level of bitset per bucket
+        ObjectArray<FixedBitSet> nextBitsetPerBucket = context.bigArrays().newObjectArray(bucketNum);
+        for (int i = 0; i<bucketNum; i++) {
+            FixedBitSet bs = bitsetPerBucket.get(i);
+            if (bs != null)
+                nextBitsetPerBucket.set(i,  new FixedBitSet(bs.length()));
+        }
+        
+        FixedBitSet combinedOrdinals = getCombinedOrdinals();
+        
+        Weight w = valuesSourceConfigs[last].parentFilter.createWeight(context.searcher(), ScoreMode.COMPLETE_NO_SCORES, 1.0f);
+        
+        for (LeafReaderContext leaf : rootContext.leaves()) {
+            final SortedSetDocValues globalOrdinals = valuesSources[last].globalOrdinalsValues(leaf);
+
+            final Bits liveDocs = leaf.reader().getLiveDocs();
+            if (this.cache_bitsets) {
+                if (debug_lvl > 0) System.out.printf("POST: undup via cache\n");
+                BitSet bits = context.bitsetFilterCache().getBitSetProducer(valuesSourceConfigs[last].parentFilter).getBitSet(leaf);
+                if (bits == null) continue;
+                compensateForNonExistingInSegment(bits, liveDocs, combinedOrdinals, globalOrdinals,  nextBitsetPerBucket);
+            } else {
+                if (debug_lvl > 0) System.out.printf("POST: undup via doc iter\n");
+                Scorer parentScorer = w.scorer(leaf);
+                if (parentScorer == null) continue;
+                compensateForNonExistingInSegment(parentScorer.iterator(), liveDocs, combinedOrdinals, globalOrdinals, nextBitsetPerBucket);
+            }
+        }
+        this.bitsetPerBucket.close();
+        this.bitsetPerBucket = nextBitsetPerBucket;
     }
     
     protected static int mod64 (int x) {
@@ -286,6 +337,33 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
         }
     }
     
+    private void compensateForNonExistingInSegment(DocIdSetIterator iter, final Bits liveDocs,
+            FixedBitSet combinedOrdinals,
+            final SortedSetDocValues globalOrdinals,
+            ObjectArray<FixedBitSet> nextBitsetPerBucket) throws IOException {
+        while (true) {
+            int docId = iter.nextDoc();
+            System.out.printf ("doc=%d\n", docId); 
+
+            if (docId == DocIdSetIterator.NO_MORE_DOCS) break;
+            if (liveDocs != null && liveDocs.get(docId) == false) {
+                continue;
+            }
+            
+            if (!globalOrdinals.advanceExact(docId)) continue;
+            int globalOrdinal = (int)globalOrdinals.nextOrd();
+            if (globalOrdinal >= combinedOrdinals.length() || !combinedOrdinals.get(globalOrdinal)) continue;
+
+            for (int bucket=0; bucket<this.bitsetPerBucket.size(); bucket++) {
+                FixedBitSet bitset = bitsetPerBucket.get(bucket);
+                if (bitset==null) continue;
+                
+                if (!bitset.get(globalOrdinal)) continue;
+                nextBitsetPerBucket.get(bucket).set(globalOrdinal);
+            }
+        }
+    }
+    
     private void undupSegment(BitSet iter, final Bits liveDocs,
             final FixedBitSet combinedOrdinals,
             final SortedSetDocValues globalOrdinals,
@@ -314,6 +392,33 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
                 
                 if (!bitset.get(globalOrdinal)) continue;
                 nextBitsetPerBucket.get(bucket).set(globalOrdinalParent);
+            }
+        }
+    }
+    private void compensateForNonExistingInSegment(BitSet iter, final Bits liveDocs,
+            final FixedBitSet combinedOrdinals,
+            final SortedSetDocValues globalOrdinals,
+            ObjectArray<FixedBitSet> nextBitsetPerBucket) throws IOException {
+        int docId = -1;
+        final int N = iter.length() -1;
+        while (docId < N) {
+            docId = iter.nextSetBit(docId+1);
+
+            if (docId == DocIdSetIterator.NO_MORE_DOCS) break;
+            if (liveDocs != null && liveDocs.get(docId) == false) {
+                continue;
+            }
+
+            if (!globalOrdinals.advanceExact(docId)) continue;
+            int globalOrdinal = (int)globalOrdinals.nextOrd();
+            if (globalOrdinal >= combinedOrdinals.length() || !combinedOrdinals.get(globalOrdinal)) continue;
+
+            for (int bucket=0; bucket<this.bitsetPerBucket.size(); bucket++) {
+                FixedBitSet bitset = bitsetPerBucket.get(bucket);
+                if (bitset==null) continue;
+                
+                if (!bitset.get(globalOrdinal)) continue;
+                nextBitsetPerBucket.get(bucket).set(globalOrdinal);
             }
         }
     }

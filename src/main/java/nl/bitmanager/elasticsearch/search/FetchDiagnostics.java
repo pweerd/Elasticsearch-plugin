@@ -33,6 +33,7 @@ import org.elasticsearch.index.mapper.DocumentFieldMappers;
 import org.elasticsearch.index.mapper.DocumentMapper;
 import org.elasticsearch.index.mapper.FieldMapper;
 import org.elasticsearch.index.mapper.MappedFieldType;
+import org.elasticsearch.index.mapper.Mapper;
 import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.fetch.FetchSubPhase;
@@ -79,7 +80,10 @@ public class FetchDiagnostics implements FetchSubPhase {
             
             QueryShardContext shardCtx = context.getQueryShardContext();
             LinkedHashMap<String, Object> dst = new LinkedHashMap<String, Object>();
-            for (FieldMapper f: mappers) {
+            for (Mapper mapper: mappers) {
+                if (!(mapper instanceof FieldMapper)) continue;
+                FieldMapper f = (FieldMapper)mapper;
+                
                 if (DEBUG) System.out.println("HIT execute2 F=" + f.name() + ", dv=" + f.fieldType().hasDocValues());
                 if (f.fieldType().hasDocValues()) 
                     extractDocValues  (dst, f, shardCtx, hitContext);
@@ -107,7 +111,7 @@ public class FetchDiagnostics implements FetchSubPhase {
         }
 
         AtomicFieldData dv = fd.load(hitContext.readerContext());
-        TypeHandler typeHandler = TypeHandler.create(fieldType);
+        TypeHandler typeHandler = TypeHandler.create(fieldType, field.name());
         if (dv != null) {
             int reldoc = hitContext.docId();
             if (reldoc < 0) {

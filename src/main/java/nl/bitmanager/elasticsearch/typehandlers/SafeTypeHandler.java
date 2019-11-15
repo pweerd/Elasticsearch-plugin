@@ -23,6 +23,7 @@ import java.io.IOException;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 
 public abstract class SafeTypeHandler extends TypeHandlerBase {
 
@@ -55,12 +56,8 @@ public abstract class SafeTypeHandler extends TypeHandlerBase {
         }
     }
 
-    protected SafeTypeHandler(String type) {
-        super(type, true);
-    }
-
-    protected SafeTypeHandler(String type, boolean known) {
-        super(type, known);
+    protected SafeTypeHandler (String type, NumericType numType, boolean known) {
+        super(type, numType, known);
     }
 
 }

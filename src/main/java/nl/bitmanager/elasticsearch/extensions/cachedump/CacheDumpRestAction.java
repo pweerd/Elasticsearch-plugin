@@ -25,7 +25,6 @@ import java.io.IOException;
 
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
@@ -38,18 +37,19 @@ import nl.bitmanager.elasticsearch.transport.NodeBroadcastResponse;
 public class CacheDumpRestAction extends BaseRestHandler {
 
    @Inject
-   public CacheDumpRestAction(Settings settings, RestControllerWrapper c) {
-      super(settings);
+   public CacheDumpRestAction(RestControllerWrapper c) {
       c.registerHandler(GET, "/_bm/cache/dump", this);
    }
 
    @Override
    public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
-       CacheDumpTransportItem item = new CacheDumpTransportItem(request);
-       NodeBroadcastRequest broadcastRequest = new NodeBroadcastRequest(ActionDefinition.INSTANCE, item);
+       final ActionDefinition def = ActionDefinition.INSTANCE;
        try {
-           return channel -> client.admin().cluster().execute(ActionDefinition.INSTANCE, broadcastRequest,
-                   new RestToXContentListener<NodeBroadcastResponse>(channel));
+           return channel -> client.execute(
+                   def.actionType, 
+                   new NodeBroadcastRequest(def, new CacheDumpTransportItem(def, request)),
+                   new RestToXContentListener<NodeBroadcastResponse>(channel)
+            );
        } catch (Exception e) {
            e.printStackTrace();
            throw e;
@@ -63,8 +63,7 @@ public class CacheDumpRestAction extends BaseRestHandler {
 
     @Override
     public String getName() {
-        // TODO Auto-generated method stub
-        return "CACHE_DUMP";
+        return ActionDefinition.INSTANCE.name;
     }
 
 }

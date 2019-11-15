@@ -29,7 +29,6 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.mapper.MappedFieldType;
 
-import nl.bitmanager.elasticsearch.mappers.TextFieldWithDocvaluesMapper;
 import nl.bitmanager.elasticsearch.typehandlers.TypeHandler;
 
 /**
@@ -61,7 +60,7 @@ public class FieldInfoItem {
     }
 
     private static String indexOptionsAsString(FieldInfo info, MappedFieldType mft) {
-        int dim = info.getPointDimensionCount();
+        int dim = info.getPointDataDimensionCount(); //PW7 nakijken: er is ook eentje met index
         int bytes = info.getPointNumBytes();
         IndexOptions indexOptions = info.getIndexOptions();
 
@@ -78,7 +77,7 @@ public class FieldInfoItem {
         
         DocValuesType dvt = mft.docValuesType();
         if (dvt != DocValuesType.NONE) return dvt.toString();
-        if (TextFieldWithDocvaluesMapper.CONTENT_TYPE.equals(mft.typeName())) return DocValuesType.SORTED_SET.toString();
+        //PW7 if (TextFieldWithDocvaluesMapper.CONTENT_TYPE.equals(mft.typeName())) return DocValuesType.SORTED_SET.toString();
             
         if ("text".equals(mft.typeName())) {
             try {

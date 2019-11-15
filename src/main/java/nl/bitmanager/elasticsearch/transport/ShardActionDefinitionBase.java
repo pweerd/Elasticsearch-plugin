@@ -19,52 +19,48 @@
 
 package nl.bitmanager.elasticsearch.transport;
 
-import org.elasticsearch.action.Action;
-import org.elasticsearch.action.support.broadcast.BroadcastOperationRequestBuilder;
-import org.elasticsearch.client.ElasticsearchClient;
+import java.io.IOException;
 
-import nl.bitmanager.elasticsearch.support.Utils;
+import org.elasticsearch.action.ActionType;
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.plugins.ActionPlugin.ActionHandler;
 
-public abstract class ShardActionDefinitionBase
-        extends Action<ShardBroadcastRequest, ShardBroadcastResponse, ShardActionDefinitionBase.BroadcastRequestBuilder> {
+public abstract class ShardActionDefinitionBase extends ActionDefinition {
 
     public enum ShardsEnum {
         ALL, PRIMARY, ACTIVE, ASSIGNED
     };
 
-    public final boolean debug;
-    public final String id;
+    public final ActionType<ShardBroadcastResponse> actionType;
+    public final ActionHandler<ShardBroadcastRequest, ShardBroadcastResponse> handler;
+
     public final ShardsEnum targets;
     public final boolean includeEmptyShards;
 
-    protected ShardActionDefinitionBase(String name, boolean debug, ShardsEnum targets, boolean includeEmpty) {
-        super(name);
+    /**
+     * Name must start with one of: [cluster:admin, indices:data/read, indices:monitor, indices:data/write, internal:, indices:internal, cluster:monitor, cluster:internal, indices:admin]
+     */
+    protected ShardActionDefinitionBase(Class<? extends ShardTransportActionBase> transportAction, String name, boolean debug, ShardsEnum targets, boolean includeEmpty) {
+        super(name, debug);
         this.targets = targets;
         this.includeEmptyShards = includeEmpty;
-        this.debug = debug;
-        this.id = Utils.getTrimmedClass(this);
+        this.actionType = new ActionType<ShardBroadcastResponse>(name, (x)->createBroadcastResponse (x));
+        this.handler = new ActionHandler<ShardBroadcastRequest, ShardBroadcastResponse>(actionType, transportAction);
     }
 
+    public abstract TransportItemBase createTransportItem(StreamInput in) throws IOException;
     public abstract TransportItemBase createTransportItem();
 
-    @Override
-    public ShardBroadcastResponse newResponse() {
-        return new ShardBroadcastResponse(createTransportItem());
+    public ShardBroadcastRequest createBroadcastRequest(StreamInput in) throws IOException {
+        return new ShardBroadcastRequest(this, in);
     }
 
-    @Override
-    public BroadcastRequestBuilder newRequestBuilder(ElasticsearchClient client) {
-        if (debug)
-            System.out.printf("[%s]: newRequestBuilder()\n", id);
-        return new BroadcastRequestBuilder(client, this);
+    public ShardBroadcastResponse createBroadcastResponse(StreamInput in) throws IOException {
+        return new ShardBroadcastResponse(this, in);
     }
 
-    public static class BroadcastRequestBuilder
-            extends BroadcastOperationRequestBuilder<ShardBroadcastRequest, ShardBroadcastResponse, BroadcastRequestBuilder> {
-
-        public BroadcastRequestBuilder(ElasticsearchClient client, ShardActionDefinitionBase definition) {
-            super(client, definition, new ShardBroadcastRequest(definition));
-        }
+    public ShardRequest createShardRequest(StreamInput in) throws IOException {
+        return new ShardRequest(this, in);
     }
 
 }

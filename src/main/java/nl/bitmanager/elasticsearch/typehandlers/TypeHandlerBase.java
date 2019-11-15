@@ -23,6 +23,7 @@ import java.io.IOException;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 
 public abstract class TypeHandlerBase extends TypeHandler {
 
@@ -42,13 +43,8 @@ public abstract class TypeHandlerBase extends TypeHandler {
         return _docValuesToObjects (fieldData, docid);
     }
 
-    
-    protected TypeHandlerBase(String type) {
-        super(type);
-    }
-
-    protected TypeHandlerBase(String type, boolean known) {
-        super(type, known);
+    protected TypeHandlerBase(String type, NumericType numType, boolean known) {
+        super(type, numType, known);
     }
 
     @Override

@@ -27,28 +27,31 @@ import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.search.aggregations.Aggregator;
 import org.elasticsearch.search.aggregations.AggregatorFactories.Builder;
 import org.elasticsearch.search.aggregations.AggregatorFactory;
-import org.elasticsearch.search.aggregations.InternalAggregation;
-import org.elasticsearch.search.aggregations.NonCollectingAggregator;
 import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
 import org.elasticsearch.search.aggregations.support.ValuesSource.Bytes.WithOrdinals;
 import org.elasticsearch.search.internal.SearchContext;
 
-public class UndupByParentsAggregatorFactory extends AggregatorFactory<UndupByParentsAggregatorFactory> {
+public class UndupByParentsAggregatorFactory extends AggregatorFactory {
     public final String parentPaths[];
     public final ParentValueSourceConfig valuesSourceConfigs[];
     public final boolean cache_bitsets;
+    public final int debug_lvl;
+    public final boolean compensateNonExisting;
+
 
     public UndupByParentsAggregatorFactory(UndupByParentsAggregatorBuilder bldr, 
             ParentValueSourceConfig valuesSourceConfigs[], 
             SearchContext context, 
-            AggregatorFactory<?> parent, 
+            AggregatorFactory parent, 
             Builder subFactoriesBuilder,
             Map<String, Object> metaData) throws IOException {
         super(bldr.getName(), context, parent, subFactoriesBuilder, metaData);
         this.parentPaths = bldr.parentPaths;
         this.cache_bitsets = bldr.cache_bitsets;
+        this.compensateNonExisting = bldr.compensateNonExisting;
+        this.debug_lvl = bldr.debug_lvl;
         this.valuesSourceConfigs = valuesSourceConfigs;
-        if (UndupByParentsAggregatorBuilder.DEBUG) System.out.printf("Created %s[name=%s parent_paths=%s]\n", getClass().getSimpleName(), name, UndupByParentsAggregatorBuilder.parentPathsAsString(parentPaths));
+        if (debug_lvl > 0) System.out.printf("Created %s[name=%s parent_paths=%s]\n", getClass().getSimpleName(), name, UndupByParentsAggregatorBuilder.parentPathsAsString(parentPaths));
     }
 
     
@@ -56,17 +59,10 @@ public class UndupByParentsAggregatorFactory extends AggregatorFactory<UndupByPa
             List<PipelineAggregator> pipelineAggregators, 
             Map<String, Object> metaData,
             String why) throws IOException {
-        if (UndupByParentsAggregatorBuilder.DEBUG) System.out.printf("-- createUnmapped because %s", why);
-        return new NonCollectingAggregator(name, context, parent, pipelineAggregators, metaData) {
-
-            @Override
-            public InternalAggregation buildEmptyAggregation() {
-                return new UndupByParentsInternal (name, 0, pipelineAggregators(), metaData());
-            }
-
-        };
-        
+        if (debug_lvl > 0) System.out.printf("-- createEmpty because %s", why);
+        return new NoopAggregator(name, context, parent, pipelineAggregators, metaData, why);
     }
+
     @Override
     public Aggregator createInternal(Aggregator parent, 
             boolean collectsFromSingleBucket,
@@ -87,7 +83,7 @@ public class UndupByParentsAggregatorFactory extends AggregatorFactory<UndupByPa
             }
         }
         
-        if (UndupByParentsAggregatorBuilder.DEBUG) System.out.printf("-- Create aggregation from factory\n");
+        if (debug_lvl > 0) System.out.printf("-- Create aggregation from factory\n");
         return new UndupByParentsAggregator(this, name, context, parent, pipelineAggregators, metaData, valuesSources);
     }
 

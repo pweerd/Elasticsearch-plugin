@@ -20,38 +20,29 @@
 package nl.bitmanager.elasticsearch.transport;
 
 import java.io.IOException;
-import java.util.function.Supplier;
 
 import org.elasticsearch.action.support.nodes.BaseNodesRequest;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 
 public class NodeBroadcastRequest extends BaseNodesRequest<NodeBroadcastRequest> {
-    private TransportItemBase transportItem;
-    public final NodeActionDefinitionBase definition;
+    private final TransportItemBase transportItem;
+    public  final NodeActionDefinitionBase definition;
     protected final String id;
 
-    public NodeBroadcastRequest(NodeActionDefinitionBase definition, TransportItemBase transportItem) {
+    public NodeBroadcastRequest(NodeActionDefinitionBase definition, TransportItemBase transportItem, String... nodesIds) {
+        super(nodesIds);
         this.definition = definition;
         this.id = definition.id + ".NodeBroadcastRequest";
         this.transportItem = transportItem;
     }
-
-    public NodeBroadcastRequest(NodeActionDefinitionBase definition) {
-        this(definition, definition.createTransportItem());
-    }
-
-    public TransportItemBase getTransportItem() {
-        return transportItem;
-    }
-
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        if (definition.debug)
-            System.out.printf("[%s]: readFrom\n", id);
-        super.readFrom(in);
-        transportItem = definition.createTransportItem();
-        transportItem.readFrom(in);
+    
+    public NodeBroadcastRequest(NodeActionDefinitionBase definition, StreamInput in) throws IOException {
+        super (in);
+        this.definition = definition;
+        this.id = definition.id + ".NodeBroadcastRequest";
+        
+        this.transportItem = definition.createTransportItem(in);
         if (definition.debug)
             System.out.printf("[%s]: readFrom->%s\n", id, transportItem);
     }
@@ -64,21 +55,9 @@ public class NodeBroadcastRequest extends BaseNodesRequest<NodeBroadcastRequest>
         transportItem.writeTo(out);
     }
 
-    /** Factory to passthrough the actiondefinition */
-    public static class Factory implements Supplier<NodeBroadcastRequest> {
-        public final NodeActionDefinitionBase definition;
 
-        public Factory(NodeActionDefinitionBase definition) {
-            this.definition = definition;
-        }
-
-        @Override
-        public NodeBroadcastRequest get() {
-            if (definition.debug)
-                System.out.println("new NodeBroadcastRequest()");
-            return new NodeBroadcastRequest(definition, null);
-        }
-
+    public TransportItemBase getTransportItem() {
+        return transportItem;
     }
 
 }

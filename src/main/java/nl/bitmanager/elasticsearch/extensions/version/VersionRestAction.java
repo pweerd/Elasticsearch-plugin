@@ -24,8 +24,6 @@ import static org.elasticsearch.rest.RestRequest.Method.GET;
 import java.io.IOException;
 
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
@@ -36,18 +34,20 @@ import nl.bitmanager.elasticsearch.transport.NodeBroadcastResponse;
 
 public class VersionRestAction extends BaseRestHandler {
 
-	@Inject
-	public VersionRestAction(Settings settings, RestControllerWrapper c) {
-		super(settings);
+	public VersionRestAction(RestControllerWrapper c) {
 		c.registerHandler(GET, "/_bm/version", this);
 	}
 
 	@Override
 	public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
-		NodeBroadcastRequest broadcastRequest = new NodeBroadcastRequest(ActionDefinition.INSTANCE);
+	    final ActionDefinition def = ActionDefinition.INSTANCE;
+		NodeBroadcastRequest broadcastRequest = new NodeBroadcastRequest(def, def.createTransportItem());
 		try {
-			return channel -> client.admin().cluster().execute(ActionDefinition.INSTANCE, broadcastRequest,
-					new RestToXContentListener<NodeBroadcastResponse>(channel));
+	        return channel -> client.execute(
+	               def.actionType, 
+	               new NodeBroadcastRequest(def, def.createTransportItem()),
+	               new RestToXContentListener<NodeBroadcastResponse>(channel)
+	        );
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw e;
@@ -61,6 +61,6 @@ public class VersionRestAction extends BaseRestHandler {
 
     @Override
     public String getName() {
-        return ActionDefinition.INSTANCE.name();
+        return ActionDefinition.INSTANCE.name;
     }
 }

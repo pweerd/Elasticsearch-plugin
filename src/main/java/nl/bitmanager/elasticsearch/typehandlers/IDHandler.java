@@ -24,13 +24,14 @@ import java.util.Arrays;
 
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 import org.elasticsearch.index.fielddata.SortedBinaryDocValues;
 import org.elasticsearch.index.mapper.Uid;
 
 public class IDHandler extends SafeTypeHandler {
 
     protected IDHandler(String type) {
-        super(type);
+        super(type, NumericType.LONG, true);
     }
 
     @Override

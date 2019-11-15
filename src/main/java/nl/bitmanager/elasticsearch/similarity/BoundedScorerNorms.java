@@ -19,23 +19,33 @@
 
 package nl.bitmanager.elasticsearch.similarity;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
-import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
-public class BoundedScorerNorms extends BoundedScorer {
-    private NumericDocValues norms;
-    protected final float weight_idf;
-    protected final float weight_boost;
+public class BoundedScorerNorms extends SimScorer {
+    private final Explanation idfExplain;
 
-    public BoundedScorerNorms(BoundedWeight weight, NumericDocValues norms)
+    private final float weight_idf;
+    private final float weight_boost;
+
+    private final float maxTf;
+    private final float biasTf;
+    private final float forceTf;
+
+
+    public BoundedScorerNorms(BoundedSimilarity parent, Explanation idfExplain, float boost, float idf)
     {
-        super (weight);
-        this.norms = norms;
-        weight_idf = weight.idf;
-        weight_boost = weight.queryBoost;
+        final BoundedSimilaritySettings settings = parent.settings;
+        this.idfExplain = idfExplain;
+        maxTf = settings.maxTf;
+        biasTf = settings.biasTf;
+        forceTf = settings.forceTf;
+        weight_idf = idf;
+        weight_boost = boost;
     }
     
     public float scoreTf (int docLen, float freq) {
@@ -44,32 +54,33 @@ public class BoundedScorerNorms extends BoundedScorer {
         return (float)(maxTf * Math.log(biasTf+freq) / Math.log(biasTf + docLen));
 
     }
-
-    @Override
-    public float score(int doc, float freq) throws IOException {
-        if (!norms.advanceExact(doc)) return 1.0f;
+    
+    private float score_tf(float freq, long norm) {
+        float tf = (forceTf > 0) ? (float)forceTf : freq;
+        if (tf > 255.0f) tf = 255.0f;
         
-        int tf = forceTf;
-        if (tf <= 0) tf = (int)freq;
-        if (tf > 255) tf = 255;
+        float fnorm = (float)norm;
+        if (tf>fnorm) tf = fnorm; 
         
-        int fl = (int)norms.longValue();
-        return (float)(weight_boost*(weight_idf + maxTf * Math.log(biasTf+tf) / Math.log(biasTf + fl)));
+        return (float)(maxTf * Math.log(biasTf+tf) / Math.log(biasTf + fnorm));
     }
     
     @Override
-    public Explanation explain(int doc, Explanation freq) throws IOException {
-        if (!norms.advanceExact(doc)) return super.explain(doc, freq);
-        
-        int tf = forceTf;
-        if (tf <= 0) tf = (int)freq.getValue();
-        if (tf > 255) tf = 255;
-        
-        int fl = (int)norms.longValue();
-        float tfBoost = (float)(maxTf * Math.log(biasTf+tf) / Math.log(biasTf + fl));
+    public float score(float freq, long norm) {
+        return (float)(weight_boost*(weight_idf + maxTf * score_tf(freq, norm)));
+    }
 
-        String msg = String.format (Locale.ROOT, "tfBoost (tf=%d [%.2f], fieldlen=%d, maxTf=%.2f, forceTf=%d, bias=%.2f)", tf, freq.getValue(), fl, maxTf, forceTf, biasTf);
-        return weight.createExplain(doc, Explanation.match(tfBoost, msg, BoundedWeight.EMPTY_EXPLAIN_LIST));
+
+    @Override
+    public Explanation explain(Explanation freq, long norm) {
+        float tfBoost = maxTf * score_tf((float)freq.getValue(), norm);
+        float score = weight_boost*(weight_idf+tfBoost); 
+        
+        List<Explanation> sub = new ArrayList<Explanation>(); 
+        String msg = String.format (Locale.ROOT, "tfBoost (tf=%.1f, fieldlen=%d, maxTf=%.2f, forceTf=%d, bias=%.2f)", freq.getValue(), norm, maxTf, forceTf, biasTf);
+        sub.add (idfExplain);
+        sub.add (Explanation.match (tfBoost, msg));
+        return Explanation.match (score, "", sub);
     }
 
 

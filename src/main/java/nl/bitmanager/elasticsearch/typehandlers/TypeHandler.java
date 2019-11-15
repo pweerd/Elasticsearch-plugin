@@ -20,15 +20,21 @@
 package nl.bitmanager.elasticsearch.typehandlers;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 
+import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 import org.elasticsearch.index.mapper.MappedFieldType;
+
+import nl.bitmanager.elasticsearch.support.Utils;
 
 public abstract class TypeHandler {
     public final String typeName;
     public final boolean knowType;
+    public final NumericType numericType;
     public static final Object[] NO_DOCVALUES = new Object[0];
 
     public abstract Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException;
@@ -42,29 +48,31 @@ public abstract class TypeHandler {
 
     public abstract String toString(byte[] b);
 
-    protected TypeHandler(String type) {
-        this.typeName = type;
-        this.knowType = true;
-    }
-
-    protected TypeHandler(String type, boolean known) {
+    protected TypeHandler(String type, NumericType numType, boolean known) {
         this.typeName = type;
         this.knowType = known;
+        this.numericType = numType;
     }
 
-    public static TypeHandler create(MappedFieldType mft) {
-        return create(mft == null ? null : mft.typeName());
+    public static TypeHandler create(MappedFieldType mft, String field) {
+        return create(mft == null ? field : mft.typeName());
     }
 
     public static TypeHandler create(String type) {
         TypeHandler ret = _types.get(type);
         if (ret == null)  {
             System.out.printf("Unknown type [%s]. Using ByteHandler.\n", type);
+            Utils.printStackTrace("Unknown handler");
             ret = new BytesHandler(type, false);
         }
         return ret;
     }
     
+    public static byte[] toByteArray(BytesRef br) {
+        byte[] bytes = br.bytes;
+        return (br.offset==0 && br.length == bytes.length) ? br.bytes : Arrays.copyOfRange(bytes, br.offset, br.offset+br.length);
+    }
+
     static HashMap<String, TypeHandler> _types;
     static {
         HashMap<String, TypeHandler> map = new HashMap<String, TypeHandler>(25);
@@ -87,6 +95,7 @@ public abstract class TypeHandler {
         
         map.put("long", new Int64Handler("long"));
         map.put("_seq_no", new Int64Handler("_seq_no"));
+        map.put("_version", new Int64Handler("_version"));
         
         map.put("integer", new Int32Handler("integer"));
         map.put("short", new Int32Handler("short"));
@@ -100,6 +109,9 @@ public abstract class TypeHandler {
         map.put("date", new DateHandler("date"));
         
         map.put("_id", new IDHandler("_id"));
+        map.put("_source", new StringHandler("_source"));
+        map.put("_primary_term", new Int64Handler("_primary_term"));
+        
 
         _types = map;
     }

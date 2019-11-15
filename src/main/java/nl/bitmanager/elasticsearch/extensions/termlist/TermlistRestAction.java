@@ -25,7 +25,6 @@ import java.io.IOException;
 
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
@@ -37,8 +36,8 @@ import nl.bitmanager.elasticsearch.transport.ShardBroadcastResponse;
 public class TermlistRestAction extends BaseRestHandler {
 
     @Inject
-    public TermlistRestAction(Settings settings, RestControllerWrapper c) {
-        super(settings);
+    public TermlistRestAction(RestControllerWrapper c) {
+        super();
         c.registerHandler(GET, "/_termlist", this);
         c.registerHandler(GET, "/{index}/_termlist", this);
         c.registerHandler(GET, "/_termlist/{field}", this);
@@ -47,10 +46,10 @@ public class TermlistRestAction extends BaseRestHandler {
 
     @Override
     public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
-        TermlistTransportItem item = new TermlistTransportItem(request);
+        TermlistTransportItem item = new TermlistTransportItem(ActionDefinition.INSTANCE, request);
         ShardBroadcastRequest broadcastRequest = new ShardBroadcastRequest(ActionDefinition.INSTANCE, item, request.param("index")); 
         try {
-            return channel -> client.admin().indices().execute(ActionDefinition.INSTANCE, broadcastRequest,
+            return channel -> client.admin().indices().execute(ActionDefinition.INSTANCE.actionType, broadcastRequest,
                     new RestToXContentListener<ShardBroadcastResponse>(channel));
         } catch (Exception e) {
             e.printStackTrace();
@@ -61,6 +60,6 @@ public class TermlistRestAction extends BaseRestHandler {
 
     @Override
     public String getName() {
-        return ActionDefinition.INSTANCE.name();
+        return ActionDefinition.INSTANCE.name;
     }
 }

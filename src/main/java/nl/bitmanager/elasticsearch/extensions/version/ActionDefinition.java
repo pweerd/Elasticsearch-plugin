@@ -19,9 +19,9 @@
 
 package nl.bitmanager.elasticsearch.extensions.version;
 
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.plugins.ActionPlugin.ActionHandler;
+import java.io.IOException;
+
+import org.elasticsearch.common.io.stream.StreamInput;
 
 import nl.bitmanager.elasticsearch.transport.NodeActionDefinitionBase;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
@@ -29,20 +29,23 @@ import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 public class ActionDefinition extends NodeActionDefinitionBase {
 
 	public static final ActionDefinition INSTANCE;
-	public static final ActionHandler<? extends ActionRequest, ? extends ActionResponse> HANDLER;
 
 	static {
 		INSTANCE = new ActionDefinition();
-		HANDLER = new ActionHandler(INSTANCE, TransportAction.class);
 	}
 
 	private ActionDefinition() {
-		super("_bm/version", false);
+		super (TransportAction.class, "cluster:admin:version", false);
 	}
 
 	@Override
 	public TransportItemBase createTransportItem() {
-		return new VersionTransportItem();
+		return new VersionTransportItem(this);
 	}
+
+    @Override
+    public TransportItemBase createTransportItem(StreamInput in) throws IOException {
+        return new VersionTransportItem(this, in);
+    }
 
 }

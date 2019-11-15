@@ -29,6 +29,8 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import nl.bitmanager.elasticsearch.support.RegexReplace;
+import nl.bitmanager.elasticsearch.support.Utils;
+import nl.bitmanager.elasticsearch.transport.ActionDefinition;
 import nl.bitmanager.elasticsearch.transport.NodeRequest;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
@@ -50,11 +52,13 @@ public class CacheDumpTransportItem extends TransportItemBase {
     String errorMsg;
     public CacheType cacheType;
 
-    public CacheDumpTransportItem() {
+    public CacheDumpTransportItem(ActionDefinition definition) {
+        super(definition);
         cacheType = CacheType.Query;
     }
 
-    public CacheDumpTransportItem(RestRequest req) {
+    public CacheDumpTransportItem(ActionDefinition definition, RestRequest req) {
+        super(definition);
         indexExpr = req.param("index_expr");
         
         String sortType = req.param("sort", "size").toLowerCase();
@@ -81,7 +85,7 @@ public class CacheDumpTransportItem extends TransportItemBase {
     }
     
     public CacheDumpTransportItem(NodeRequest req, String initError) {
-        this();
+        this(req.definition);
         CacheDumpTransportItem other = (CacheDumpTransportItem)req.getTransportItem();
         indexExpr = other.indexExpr;
         sort = other.sort;
@@ -89,27 +93,9 @@ public class CacheDumpTransportItem extends TransportItemBase {
         errorMsg  = initError;
         cacheType = other.cacheType;
     }
-
-    public RegexReplace getIndexReplacer() {
-        if (indexExpr==null)  return null;
-        if (replacer==null) 
-            replacer = new RegexReplace(indexExpr);
-        return replacer;
-    }
-
-    public void setCacheInfo (Set<String> indexSet, Map<String, Map<String, CacheInfo>> indexCacheMap, String errorMsg) {
-        this.indexSet = indexSet;
-        this.indexCacheMap = indexCacheMap;
-        this.errorMsg = errorMsg;
-    }
     
-    
-    @Override
-    public String toString () {
-        return String.format("Transportitem: expr=%s, sortq=%s, type=%s,  id=%s", this.indexExpr, this.sort, cacheType, creationId );
-    }
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
+    public CacheDumpTransportItem(ActionDefinition definition, StreamInput in) throws IOException {
+        super(definition);
         cacheType = CacheType.values()[in.readByte()];
         sort = SortType.values()[in.readByte()];
         errorMsg = readStr (in);
@@ -136,6 +122,7 @@ public class CacheDumpTransportItem extends TransportItemBase {
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
+        super.writeTo(out);
         out.writeByte((byte)cacheType.ordinal());
         out.writeByte((byte)sort.ordinal());
         writeStr(out, errorMsg);
@@ -158,6 +145,26 @@ public class CacheDumpTransportItem extends TransportItemBase {
                 }
             }
         }
+    }
+
+
+    public RegexReplace getIndexReplacer() {
+        if (indexExpr==null)  return null;
+        if (replacer==null) 
+            replacer = new RegexReplace(indexExpr);
+        return replacer;
+    }
+
+    public void setCacheInfo (Set<String> indexSet, Map<String, Map<String, CacheInfo>> indexCacheMap, String errorMsg) {
+        this.indexSet = indexSet;
+        this.indexCacheMap = indexCacheMap;
+        this.errorMsg = errorMsg;
+    }
+    
+    
+    @Override
+    public String toString () {
+        return String.format("%s: expr=%s, sortq=%, type=%s, creationid=%s", Utils.getTrimmedClass(this), this.indexExpr, this.sort, cacheType, System.identityHashCode(this));
     }
     
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {

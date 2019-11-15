@@ -27,47 +27,30 @@ import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 
 public class NodeResponse extends BaseNodeResponse {
-    private TransportItemBase transportItem;
-    private Throwable error;
+    private final NodeActionDefinitionBase definition;
+    private final TransportItemBase transportItem;
+    private final Throwable error;
 
-    public NodeResponse(TransportItemBase item) {
-        transportItem = item;
+    public NodeResponse (NodeActionDefinitionBase definition,  DiscoveryNode node, TransportItemBase transportItem)
+    {
+        super (node);
+        this.definition = definition;
+        this.transportItem = transportItem;
+        this.error = null;
     }
-
-    public NodeResponse(Throwable err) {
-        error = err;
+    public NodeResponse (NodeActionDefinitionBase definition,  DiscoveryNode node, Throwable error)
+    {
+        super (node);
+        this.definition = definition;
+        this.transportItem = definition.createTransportItem();
+        this.error = error;
     }
-
-    public NodeResponse(DiscoveryNode node, TransportItemBase item) {
-        super(node);
-        this.transportItem = item;
-    }
-
-    public NodeResponse(DiscoveryNode node, Throwable err) {
-        super(node);
-        error = err;
-    }
-
-    public TransportItemBase getTransportItem() {
-        return transportItem;
-    }
-
-    public Throwable getError() {
-        return error;
-    }
-
-    public void setError(Throwable err) {
-        error = err;
-    }
-
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        super.readFrom(in);
-        error = null;
-        if (in.readBoolean())
-            error = TransportItemBase.readThrowable(in);
-        if (in.readBoolean())
-            transportItem.readFrom(in);
+    public NodeResponse (NodeActionDefinitionBase definition,  StreamInput in) throws IOException
+    {
+        super(in);
+        this.definition = definition;
+        error = in.readBoolean() ? TransportItemBase.readThrowable(in) : null;
+        transportItem = in.readBoolean() ? definition.createTransportItem(in) : definition.createTransportItem();
     }
 
     @Override
@@ -79,6 +62,14 @@ public class NodeResponse extends BaseNodeResponse {
         out.writeBoolean(transportItem != null);
         if (transportItem != null)
             transportItem.writeTo(out);
+    }
+
+    public TransportItemBase getTransportItem() {
+        return transportItem;
+    }
+
+    public Throwable getError() {
+        return error;
     }
 
 }

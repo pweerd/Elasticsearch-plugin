@@ -45,15 +45,16 @@ import org.elasticsearch.search.aggregations.AggregatorFactory;
 import org.elasticsearch.search.internal.SearchContext;
 
 public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<UndupByParentsAggregatorBuilder> {
-    public final static boolean DEBUG = false;
     public static final String NAME = "bm_undup_by_parents";
     
     public final String[] parentPaths;
+    public final int debug_lvl;
     public final boolean resilient;
     public final boolean cache_bitsets;
+    public final boolean compensateNonExisting;
 
 
-    private UndupByParentsAggregatorBuilder(String name, String path, boolean resilient, boolean cache_bitsets) {
+    private UndupByParentsAggregatorBuilder(String name, String path, boolean resilient, boolean cache_bitsets, boolean compensateNonExisting, int dbgLvl) {
         super(name); 
         this.resilient = resilient;
         this.cache_bitsets = cache_bitsets;
@@ -64,12 +65,16 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         if (parentPaths.length == 0) {
             throw new IllegalArgumentException("[parent_path] should not be empty: [" + name + "]");
         }
+        this.compensateNonExisting = compensateNonExisting;
+        this.debug_lvl = dbgLvl;
     }
     private UndupByParentsAggregatorBuilder(UndupByParentsAggregatorBuilder other) {
         super(other.name); 
         this.resilient = other.resilient;
         this.cache_bitsets = other.cache_bitsets;
         this.parentPaths = Arrays.copyOf(other.parentPaths,  other.parentPaths.length);
+        this.compensateNonExisting = other.compensateNonExisting;
+        this.debug_lvl = other.debug_lvl;
     }
     
     private String[] parsePath (String path) {
@@ -98,6 +103,8 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
             parentPaths[i] = in.readString();
         resilient = in.readBoolean();
         cache_bitsets = in.readBoolean();
+        compensateNonExisting = in.readBoolean();
+        debug_lvl = in.readVInt();
     }
     
 
@@ -108,6 +115,8 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
             out.writeString(parentPaths[i]);
         out.writeBoolean(resilient);
         out.writeBoolean(cache_bitsets);
+        out.writeBoolean(compensateNonExisting);
+        out.writeVInt(debug_lvl);
     }
 
     
@@ -124,7 +133,6 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         _ParentJoinGetter x = new _ParentJoinGetter(mapperService);
         
         FieldMapper parentJoinFieldMapper = x.getJoinFieldMapper();
-        
         for (int lvl=0; lvl < levels; lvl++) {
             String type = parentPaths[lvl];
             if ("_nested_".equals(type)) {
@@ -132,18 +140,12 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
                 continue;
             }
             
-            if (parentJoinFieldMapper==null) {
-                if (!resilient)
-                    throw new RuntimeException ("Mapping has no join field.");
-                return null;
-            }
+            if (parentJoinFieldMapper==null) 
+                throw new RuntimeException ("Mapping has no join field.");
             
             FieldMapper parentIdFieldMapper = (FieldMapper) x.getIdMapper(type, true);
-            if (parentIdFieldMapper==null) {
-                if (!resilient)
-                    throw new RuntimeException ("Parent type [" + type + "] not found.");
-                return null;
-            }
+            if (parentIdFieldMapper==null) 
+                throw new RuntimeException ("Parent type [" + type + "] not found.");
             
             configs[lvl] = new ParentValueSourceConfig (context, parentIdFieldMapper, x.getParentFilter());
         }
@@ -154,8 +156,10 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         String parent_paths = null;
         XContentParser.Token token;
         String currentFieldName = null;
-        boolean resilient = true;
+        int dbgLvl = 0;
+        boolean resilient = false;
         boolean cache = true; 
+        boolean compensateNonExisting = true;
         while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
             switch (token) {
             case FIELD_NAME: 
@@ -170,10 +174,25 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
             case VALUE_BOOLEAN:
                 if ("resilient".equals(currentFieldName)) {
                     resilient = parser.booleanValue();
+                    if (resilient) throw new RuntimeException ("Resilient=true is currently not supported.");
                     continue;
                 }
                 if ("cache_bitsets".equals(currentFieldName)) {
                     cache = parser.booleanValue();
+                    continue;
+                }
+                if ("compensate_non_existing".equals(currentFieldName)) {
+                    compensateNonExisting = parser.booleanValue();
+                    continue;
+                }
+                if ("debug".equals(currentFieldName)) {
+                    dbgLvl = parser.booleanValue() ? 1 : 0;
+                    continue;
+                }
+                break;
+            case VALUE_NUMBER:
+                if ("debug".equals(currentFieldName)) {
+                    dbgLvl = parser.intValue();
                     continue;
                 }
                 break;
@@ -185,7 +204,7 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
 
         if (parent_paths == null) 
             throwParsingException (parser, aggregationName, "Missing [parent_paths] field");
-        return new UndupByParentsAggregatorBuilder(aggregationName, parent_paths, resilient, cache);
+        return new UndupByParentsAggregatorBuilder(aggregationName, parent_paths, resilient, cache, compensateNonExisting, dbgLvl);
     }
     
     private static void throwParsingException (XContentParser parser, String name, String msg) {
@@ -202,8 +221,14 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
     }
 
     @Override
-    protected AggregatorFactory<?> doBuild(SearchContext context, AggregatorFactory<?> parent, Builder subfactoriesBuilder) throws IOException {
-        ParentValueSourceConfig[] configs = resolveConfigs (context);
+    protected AggregatorFactory doBuild(SearchContext context, AggregatorFactory parent, Builder subfactoriesBuilder) throws IOException {
+        ParentValueSourceConfig[] configs;
+        try {
+            configs = resolveConfigs (context);
+        } catch (Exception e) {
+            if (!resilient) throw e;
+            return new NoopAggregatorFactory(this, context, parent, subfactoriesBuilder, metaData, e.getMessage());
+        }
         return new UndupByParentsAggregatorFactory(this, configs, context, parent, subfactoriesBuilder, metaData);
     }
 
@@ -226,16 +251,25 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         return sb.toString();
     }
 
+
+
     @Override
-    protected int doHashCode() {
-        return Objects.hash((Object[])parentPaths);
+    protected AggregationBuilder shallowCopy(Builder factoriesBuilder,  Map<String, Object> metaData) {
+        return new UndupByParentsAggregatorBuilder(this);
     }
 
     @Override
-    protected boolean doEquals(Object obj) {
-        if (obj==null || obj.getClass() != getClass()) return false;
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), (Object[])parentPaths);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        if (super.equals(obj) == false) return false;
         UndupByParentsAggregatorBuilder other = (UndupByParentsAggregatorBuilder) obj;
-        return Arrays.deepEquals(parentPaths,  other.parentPaths);
+        return Arrays.deepEquals(parentPaths, other.parentPaths);
     }
 
     
@@ -284,6 +318,7 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         private Object run(String cmd) throws Exception {
             if (cmd == "get_join_mapper") {
                 parentJoinFieldMapper = null;
+                if (joinFieldType==null) return null;
                 Class<? extends Object> c = joinFieldType.getClass();
                 Method m = c.getDeclaredMethod("getMapper");
                 return parentJoinFieldMapper = (FieldMapper) m.invoke(joinFieldType);
@@ -318,12 +353,6 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
             }
             return null;
         }
-    }
-
-
-    @Override
-    protected AggregationBuilder shallowCopy(Builder factoriesBuilder,  Map<String, Object> metaData) {
-        return new UndupByParentsAggregatorBuilder(this);
     }
 
 

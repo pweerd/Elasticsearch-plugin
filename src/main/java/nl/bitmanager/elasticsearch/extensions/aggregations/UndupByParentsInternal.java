@@ -35,9 +35,9 @@ import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
  * Result of the {@link UndupByParentsAggregator}.
  */
 public class UndupByParentsInternal extends InternalNumericMetricsAggregation.SingleValue implements UndupByParents {
-    private final double count;
+    private final long count;
     
-    public UndupByParentsInternal(String name, double count, List<PipelineAggregator> pipelineAggregators,
+    public UndupByParentsInternal(String name, long count, List<PipelineAggregator> pipelineAggregators,
             Map<String, Object> metaData) {
         
         super(name, pipelineAggregators, metaData);
@@ -49,13 +49,13 @@ public class UndupByParentsInternal extends InternalNumericMetricsAggregation.Si
      */
     public UndupByParentsInternal(StreamInput in) throws IOException {
         super(in);
-        count = in.readDouble();
+        count = in.readLong();
 
     }
 
     @Override
     protected void doWriteTo(StreamOutput out) throws IOException {
-        out.writeDouble(count);
+        out.writeLong(count);
     }
 
     @Override
@@ -65,7 +65,7 @@ public class UndupByParentsInternal extends InternalNumericMetricsAggregation.Si
 
     @Override
     public UndupByParentsInternal doReduce(List<InternalAggregation> aggregations, ReduceContext reduceContext) {
-        double count = 0;
+        long count = 0;
         for (InternalAggregation aggregation : aggregations) {
             count += ((UndupByParentsInternal) aggregation).count;
         }
@@ -79,24 +79,27 @@ public class UndupByParentsInternal extends InternalNumericMetricsAggregation.Si
 
     @Override
     public long getValue() {
-        return (long)count;
+        return count;
     }
 
     @Override
     public XContentBuilder doXContentBody(XContentBuilder builder, Params params) throws IOException {
-        boolean hasValue = !Double.isInfinite(count);
-        builder.field(CommonFields.DOC_COUNT.getPreferredName(), hasValue ? count : null);
+        builder.field(CommonFields.DOC_COUNT.getPreferredName(), count);
         return builder;
     }
-
+    
     @Override
-    protected int doHashCode() {
-        return Objects.hash(count);
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), count);
     }
 
     @Override
-    protected boolean doEquals(Object obj) {
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        if (super.equals(obj) == false) return false;
         UndupByParentsInternal other = (UndupByParentsInternal) obj;
-        return Objects.equals(count, other.count);
+        return count == other.count;
     }
+
 }

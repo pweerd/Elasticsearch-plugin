@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import nl.bitmanager.elasticsearch.extensions.Plugin;
+import nl.bitmanager.elasticsearch.transport.ActionDefinition;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -35,10 +36,37 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 public class VersionTransportItem extends TransportItemBase {
 	protected TreeMap<String, NodeVersion> nodeVersions;
 
-	public VersionTransportItem() {
-	}
+    public VersionTransportItem(ActionDefinition definition) {
+        super(definition);
+    }
 
-	public Map<String, NodeVersion> getNodeVersions() {
+    public VersionTransportItem(ActionDefinition definition, StreamInput in) throws IOException {
+        super(definition, in);
+        int n = in.readInt();
+        if (n == 0)
+            return;
+
+        nodeVersions = createMap();
+        for (int i = 0; i < n; i++) {
+            NodeVersion tmp = new NodeVersion(definition, in);
+            nodeVersions.put(tmp.getNode(), tmp);
+        }
+    }
+
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        super.writeTo(out);
+        int n = nodeVersions == null ? 0 : nodeVersions.size();
+        out.writeInt(n);
+        if (n == 0)
+            return;
+
+        for (Entry<String, NodeVersion> kvp : nodeVersions.entrySet()) {
+            kvp.getValue().writeTo(out);
+        }
+    }
+
+    public Map<String, NodeVersion> getNodeVersions() {
 		return nodeVersions;
 	}
 
@@ -52,7 +80,7 @@ public class VersionTransportItem extends TransportItemBase {
 		}
 		if (nodeVersions.containsKey(node))
 			return;
-		nodeVersions.put(node, new NodeVersion(node, version, location));
+		nodeVersions.put(node, new NodeVersion(definition, node, version, location));
 	}
 
 	@Override
@@ -73,34 +101,8 @@ public class VersionTransportItem extends TransportItemBase {
 		}
 	}
 
-	@Override
-	public void readFrom(StreamInput in) throws IOException {
-		int n = in.readInt();
-		if (n == 0)
-			return;
-
-		nodeVersions = createMap();
-		NodeVersion tmp = new NodeVersion();
-		for (int i = 0; i < n; i++) {
-			tmp.readFrom(in);
-			nodeVersions.put(tmp.getNode(), tmp);
-		}
-	}
-
-	@Override
-	public void writeTo(StreamOutput out) throws IOException {
-		int n = nodeVersions == null ? 0 : nodeVersions.size();
-		out.writeInt(n);
-		if (n == 0)
-			return;
-
-		for (Entry<String, NodeVersion> kvp : nodeVersions.entrySet()) {
-			kvp.getValue().writeTo(out);
-		}
-	}
-
 	public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-		builder.field("pluginVersion", Plugin.version);
+		builder.field("plugin-version", Plugin.version);
 
 		// Create a map to collect all keys of the settings that differ
 		Map<String, String> settingDifferences = new TreeMap<String, String>();
@@ -131,11 +133,11 @@ public class VersionTransportItem extends TransportItemBase {
 				break;
 			}
 		}
-		if (first == null || settingDifferences.size() > 0)
+		if (first == null)
 			allVersionsOK = false;
 
 		// export node versions
-		builder.field("allVersionsOK", allVersionsOK);
+		builder.field("all-versions-ok", allVersionsOK);
 		if (settingDifferences.size() > 0)
 			builder.field("settings-differences", getDifferencesAsString(settingDifferences));
 		if (firstDiff != null) {

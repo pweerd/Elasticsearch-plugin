@@ -20,11 +20,12 @@
 package nl.bitmanager.elasticsearch.typehandlers;
 
 import org.apache.lucene.util.NumericUtils;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 
 public class Int32Handler extends Int64Handler {
 
     protected Int32Handler(String type) {
-        super(type);
+        super(type, NumericType.INT, true);
     }
 
     protected Object[] _bytesToObjects(byte[] bytes) {

@@ -25,13 +25,12 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.MultiFields;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
@@ -45,6 +44,10 @@ import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.IndexService;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.elasticsearch.index.fielddata.IndexFieldData;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
+import org.elasticsearch.index.fielddata.plain.DocValuesIndexFieldData;
+import org.elasticsearch.index.fielddata.plain.DocValuesIndexFieldData.Builder;
+import org.elasticsearch.index.fielddata.plain.SortedNumericDVIndexFieldData;
 import org.elasticsearch.index.mapper.DocumentFieldMappers;
 import org.elasticsearch.index.mapper.DocumentMapper;
 import org.elasticsearch.index.mapper.MappedFieldType;
@@ -126,7 +129,8 @@ public class DocInverter {
                     json.field("value_bin", (Object)null);
                 else {
                     json.field("value_bin", binVal);
-                    json.field("value_binstr", binVal.utf8ToString());
+                    TypeHandler h = TypeHandler.create(f.name());
+                    json.field("value_binstr", h.toString(TypeHandler.toByteArray(binVal)));
                 }
             }
             if (outputLevel > 0) {
@@ -137,9 +141,9 @@ public class DocInverter {
         }
         json.endArray();
     }
-
-    public static FieldInfo[]  getFields (IndexReader leafRdr) {
-        FieldInfos fieldInfos = MultiFields.getMergedFieldInfos(leafRdr);
+    
+    public static FieldInfo[]  getFields (LeafReader leafRdr) {
+        FieldInfos fieldInfos = leafRdr.getFieldInfos();
         int N = fieldInfos.size();
         FieldInfo[] ret = new FieldInfo[N];
         
@@ -190,9 +194,8 @@ public class DocInverter {
                 json.endObject();
             }
             inField = true;
-            MappedFieldType mft = indexShard.mapperService().fullName(field.name);
-            TypeHandler typeHandler = TypeHandler.create(mft);
             MappedFieldType fieldType = indexShard.mapperService().fullName(field.name);
+            TypeHandler typeHandler = TypeHandler.create(fieldType, field.name);
 
             json.startObject();
             json.field("name", field.name);
@@ -200,6 +203,7 @@ public class DocInverter {
             json.field("mappedType", fieldType==null ? null : fieldType.typeName());
             json.field("mappedClass", Utils.getClass(fieldType));
             json.field("type", Utils.toString(fieldType));
+            json.field("dv-type", field.getDocValuesType().toString());
 
             System.out.printf("Handling field2 %s\n", field);
             //Dump index terms if requested
@@ -209,9 +213,9 @@ public class DocInverter {
                 if (terms != null)
                     extractTerms (json, terms, field, fieldType, typeHandler);
                 else {
-                    System.out.printf("points for %s: dim=%d, num=%d\n", field.name, field.getPointDimensionCount(), field.getPointNumBytes());
+                    System.out.printf("points for %s: dim=%d, num=%d\n", field.name, field.getPointDataDimensionCount(), field.getPointNumBytes());
 
-                    if (field.getPointDimensionCount() > 0 && field.getPointNumBytes() >= 0)
+                    if (field.getPointDataDimensionCount() > 0 && field.getPointNumBytes() >= 0) //PW7 is ook index variant
                         extractPointTerms(json, field, fieldType, typeHandler);
                 }
                 json.endArray();
@@ -231,9 +235,9 @@ public class DocInverter {
     }
 
     private void extractDocValues(XContentBuilder json, QueryShardContext queryShardContext, FieldInfo field, MappedFieldType fieldType, TypeHandler typeHandler) throws IOException {
-        IndexFieldData<?> fd;
+        IndexFieldData<?> fd = null;
         try {
-            fd = fieldType==null ? null : queryShardContext.getForField(fieldType);
+            if (fieldType!=null) fd = queryShardContext.getForField(fieldType);
         } catch(Throwable th) {
             String x = th.toString();
             if (th instanceof IllegalArgumentException) {
@@ -241,9 +245,18 @@ public class DocInverter {
                     x = "Not supported";
             }
             json.field ("error", x);
-            //th.printStackTrace(); VersionFieldMapper $VersionFieldType
-            return;
         }
+        if (fd == null) {
+            DocValuesType dvt = field.getDocValuesType();
+            switch (dvt) {
+                default:  return;
+                case NUMERIC:
+                case SORTED_NUMERIC:
+                    fd = new SortedNumericDVIndexFieldData(queryShardContext.index(), field.name, typeHandler.numericType);
+                    break;
+            }
+        }
+            
         AtomicFieldData dv = fd==null ? null : fd.load(leafCtx);
         if (this.outputLevel > 0) {
             json.field("ft_class", Utils.getClass(fieldType));

@@ -19,6 +19,8 @@
 
 package nl.bitmanager.elasticsearch.transport;
 
+import static org.elasticsearch.action.support.DefaultShardOperationFailedException.readShardOperationFailed;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -31,26 +33,30 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.rest.action.RestActions;
 
 public class ShardBroadcastResponse extends BroadcastResponse implements ToXContentObject {
-    private TransportItemBase transportItem;
+    protected final ShardActionDefinitionBase definition;
+    private   final TransportItemBase transportItem;
 
-    public ShardBroadcastResponse(TransportItemBase item) {
+    public ShardBroadcastResponse(ShardActionDefinitionBase definition, TransportItemBase item) {
+        this.definition = definition;
         transportItem = item;
     }
 
-    public ShardBroadcastResponse(TransportItemBase item, int totalShards, int successfulShards, int failedShards,
+    public ShardBroadcastResponse(ShardActionDefinitionBase definition, TransportItemBase item, int totalShards, int successfulShards, int failedShards,
             List<DefaultShardOperationFailedException> shardFailures) {
         super(totalShards, successfulShards, failedShards, shardFailures);
+        this.definition = definition;
         this.transportItem = item;
     }
+    
+    public ShardBroadcastResponse(ShardActionDefinitionBase definition, StreamInput in) throws IOException {
+        super(in);
+        this.definition = definition;
+        this.transportItem = definition.createTransportItem(in);
+    }
+
 
     public TransportItemBase getTransportItem() {
         return transportItem;
-    }
-
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        super.readFrom(in);
-        transportItem.readFrom(in);
     }
 
     @Override

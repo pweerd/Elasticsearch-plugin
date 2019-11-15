@@ -20,7 +20,6 @@
 package nl.bitmanager.elasticsearch.transport;
 
 import java.io.IOException;
-import java.util.function.Supplier;
 
 import org.elasticsearch.action.support.broadcast.BroadcastShardRequest;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -28,14 +27,9 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.index.shard.ShardId;
 
 public class ShardRequest extends BroadcastShardRequest {
-    public final ShardActionDefinitionBase definition;
+    public    final ShardActionDefinitionBase definition;
     protected final String id;
-    private TransportItemBase transportItem;
-
-    public ShardRequest(ShardActionDefinitionBase definition) {
-        this.definition = definition;
-        this.id = getId(definition);
-    }
+    private   final TransportItemBase transportItem;
 
     public ShardRequest(ShardId shardId, ShardBroadcastRequest request) {
         super(shardId, request);
@@ -52,15 +46,15 @@ public class ShardRequest extends BroadcastShardRequest {
         return transportItem;
     }
 
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
+    public ShardRequest(ShardActionDefinitionBase definition, StreamInput in) throws IOException {
+        super(in);
+        this.definition = definition;
+        this.id = getId(definition);
         if (definition.debug)
             System.out.printf("[%s]: readFrom\n", id);
-        super.readFrom(in);
-        transportItem = definition.createTransportItem();
-        transportItem.readFrom(in);
+        transportItem = definition.createTransportItem(in);
     }
-
+    
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         if (definition.debug)
@@ -69,20 +63,4 @@ public class ShardRequest extends BroadcastShardRequest {
         transportItem.writeTo(out);
     }
 
-    /** Factory to passthrough the actiondefinition */
-    public static class Factory implements Supplier<ShardRequest> {
-        public final ShardActionDefinitionBase definition;
-
-        public Factory(ShardActionDefinitionBase definition) {
-            this.definition = definition;
-        }
-
-        @Override
-        public ShardRequest get() {
-            if (definition.debug)
-                System.out.printf("%s: new ShardRequest()\n", definition.id);
-            return new ShardRequest(definition);
-        }
-
-    }
 }

@@ -25,11 +25,15 @@ import org.apache.lucene.util.NumericUtils;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.elasticsearch.index.fielddata.AtomicNumericFieldData;
 import org.elasticsearch.index.fielddata.SortedNumericDoubleValues;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 
 public class Float64Handler extends Int64Handler {
 
     protected Float64Handler(String type) {
-        super(type);
+        super(type, NumericType.DOUBLE, true);
+    }
+    protected Float64Handler(String type, NumericType numType, boolean known) {
+        super(type, numType, known);
     }
 
     @Override

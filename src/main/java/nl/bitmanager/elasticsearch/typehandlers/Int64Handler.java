@@ -25,11 +25,15 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.util.NumericUtils;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.elasticsearch.index.fielddata.AtomicNumericFieldData;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 
 public class Int64Handler extends SafeTypeHandler {
 
     protected Int64Handler(String type) {
-        super(type);
+        super(type, NumericType.LONG, true);
+    }
+    protected Int64Handler(String type, NumericType numType, boolean known) {
+        super(type, numType, known);
     }
 
     @Override

@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import nl.bitmanager.elasticsearch.extensions.Plugin;
+import nl.bitmanager.elasticsearch.transport.ActionDefinition;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -46,29 +47,53 @@ public class NodeVersion extends TransportItemBase {
 	private org.elasticsearch.Version esVersion;
 	private Map<String, String> esSettings;
 
-	NodeVersion() {
+	NodeVersion(ActionDefinition definition) {
+	    super(definition);
 		esVersion = org.elasticsearch.Version.CURRENT;
 		esSettings = asMap (Plugin.ESSettings);
 	}
 
-	public NodeVersion(String node, String version, URL location) {
+    public NodeVersion(ActionDefinition definition, String node, String version, URL location) {
+        super(definition);
         esSettings = asMap (Plugin.ESSettings);
-		esVersion = org.elasticsearch.Version.CURRENT;
-		this.node = node;
-		this.version = version;
-		if (location != null) {
-			this.location = location.toString();
-			String proto = location.getProtocol();
-			if (proto != null && proto.startsWith("file")) {
-				try {
-					File file = new File(location.getFile());
-					fileSize = file.length();
-					fileDate = file.lastModified();
-				} catch (Exception e) {
-				}
-			}
-		}
-	}
+        esVersion = org.elasticsearch.Version.CURRENT;
+        this.node = node;
+        this.version = version;
+        if (location != null) {
+            this.location = location.toString();
+            String proto = location.getProtocol();
+            if (proto != null && proto.startsWith("file")) {
+                try {
+                    File file = new File(location.getFile());
+                    fileSize = file.length();
+                    fileDate = file.lastModified();
+                } catch (Exception e) {
+                }
+            }
+        }
+    }
+
+    public NodeVersion(ActionDefinition definition, StreamInput in) throws IOException {
+        super(definition, in);
+        node = readStr(in);
+        version = readStr(in);
+        location = readStr(in);
+        fileSize = in.readLong();
+        fileDate = in.readLong();
+        esVersion = org.elasticsearch.Version.readVersion(in);
+        esSettings = readMap(in);
+    }
+
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        writeStr(out, node);
+        writeStr(out, version);
+        writeStr(out, location);
+        out.writeLong(fileSize);
+        out.writeLong(fileDate);
+        org.elasticsearch.Version.writeVersion(esVersion, out);
+        writeMap(out, esSettings);
+    }
     
     private static Map<String,String> asMap (Settings x) {
         Map<String,String> ret = new HashMap<String,String>(x.size());
@@ -165,28 +190,6 @@ public class NodeVersion extends TransportItemBase {
 		builder.endObject();
 	}
 
-	@Override
-	public void readFrom(StreamInput in) throws IOException {
-		node = readStr(in);
-		version = readStr(in);
-		location = readStr(in);
-		fileSize = in.readLong();
-		fileDate = in.readLong();
-		esVersion = org.elasticsearch.Version.readVersion(in);
-		esSettings = readMap(in);
-	}
-
-	@Override
-	public void writeTo(StreamOutput out) throws IOException {
-		writeStr(out, node);
-		writeStr(out, version);
-		writeStr(out, location);
-		out.writeLong(fileSize);
-		out.writeLong(fileDate);
-		org.elasticsearch.Version.writeVersion(esVersion, out);
-		writeMap(out, esSettings);
-	}
-
 	private static Map<String, String> appendDifference(Map<String, String> differences, String key) {
 		if (differences == null)
 			differences = new TreeMap<String, String>();
@@ -249,7 +252,6 @@ public class NodeVersion extends TransportItemBase {
 
 	@Override
 	protected void consolidateResponse(TransportItemBase other) {
-		// TODO Auto-generated method stub
-
+		// Nothing to do here
 	}
 }

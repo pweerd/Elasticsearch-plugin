@@ -19,43 +19,37 @@
 
 package nl.bitmanager.elasticsearch.transport;
 
-import org.elasticsearch.action.Action;
-import org.elasticsearch.action.support.nodes.NodesOperationRequestBuilder;
-import org.elasticsearch.client.ElasticsearchClient;
+import java.io.IOException;
 
-import nl.bitmanager.elasticsearch.support.Utils;
+import org.elasticsearch.action.ActionType;
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.plugins.ActionPlugin.ActionHandler;
 
-public abstract class NodeActionDefinitionBase
-        extends Action<NodeBroadcastRequest, NodeBroadcastResponse, NodeActionDefinitionBase.BroadcastRequestBuilder> {
-    public final boolean debug;
-    public final String id;
-
-    protected NodeActionDefinitionBase(String name, boolean debug) {
-        super(name);
-        this.debug = debug;
-        this.id = Utils.getTrimmedClass(this);
+public abstract class NodeActionDefinitionBase extends ActionDefinition {
+    public final ActionType<NodeBroadcastResponse> actionType;
+    public final ActionHandler<NodeBroadcastRequest, NodeBroadcastResponse> handler;
+ 
+    /**
+     * Name must start with one of: [cluster:admin, indices:data/read, indices:monitor, indices:data/write, internal:, indices:internal, cluster:monitor, cluster:internal, indices:admin]
+     */
+    protected NodeActionDefinitionBase(Class<? extends NodeTransportActionBase> transportAction, String name, boolean debug) {
+        super(name, debug);
+        this.actionType = new ActionType<NodeBroadcastResponse>(name, (x)->createBroadcastResponse (x));
+        this.handler = new ActionHandler<NodeBroadcastRequest, NodeBroadcastResponse>(actionType, transportAction);
     }
 
     public abstract TransportItemBase createTransportItem();
+    public abstract TransportItemBase createTransportItem(StreamInput in) throws IOException;
 
-    @Override
-    public NodeBroadcastResponse newResponse() {
-        return new NodeBroadcastResponse(this);
+    public NodeBroadcastRequest createBroadcastRequest(StreamInput in) throws IOException {
+        return new NodeBroadcastRequest(this, in);
+    }
+    public NodeBroadcastResponse createBroadcastResponse(StreamInput in) throws IOException {
+        return new NodeBroadcastResponse(this, in);
     }
 
-    @Override
-    public BroadcastRequestBuilder newRequestBuilder(ElasticsearchClient client) {
-        if (debug)
-            System.out.printf("[%s]: newRequestBuilder()\n", id);
-        return new BroadcastRequestBuilder(client, this);
-    }
-
-    public static class BroadcastRequestBuilder
-            extends NodesOperationRequestBuilder<NodeBroadcastRequest, NodeBroadcastResponse, BroadcastRequestBuilder> {
-
-        public BroadcastRequestBuilder(ElasticsearchClient client, NodeActionDefinitionBase definition) {
-            super(client, definition, new NodeBroadcastRequest(definition, null));
-        }
+    public NodeRequest createNodeRequest(StreamInput in) throws IOException {
+        return new NodeRequest(this, in);
     }
 
 }

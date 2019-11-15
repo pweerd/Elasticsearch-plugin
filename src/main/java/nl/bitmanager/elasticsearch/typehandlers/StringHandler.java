@@ -29,7 +29,7 @@ import org.elasticsearch.index.fielddata.SortedBinaryDocValues;
 public class StringHandler extends SafeTypeHandler {
 
     protected StringHandler(String type) {
-        super(type);
+        super(type, null, true);
     }
 
     @Override

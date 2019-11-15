@@ -19,11 +19,11 @@
 
 package nl.bitmanager.elasticsearch.transport;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.DefaultShardOperationFailedException;
 import org.elasticsearch.action.support.broadcast.BroadcastShardOperationFailedException;
@@ -36,10 +36,12 @@ import org.elasticsearch.cluster.routing.GroupShardsIterator;
 import org.elasticsearch.cluster.routing.RoutingTable;
 import org.elasticsearch.cluster.routing.ShardRouting;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.shard.IndexShard;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.indices.IndicesService;
+import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
@@ -55,12 +57,18 @@ public abstract class ShardTransportActionBase
     protected ShardTransportActionBase(ShardActionDefinitionBase definition, Settings settings, ThreadPool threadPool,
             ClusterService clusterService, TransportService transportService, ActionFilters actionFilters,
             IndexNameExpressionResolver indexNameExpressionResolver) {
-        super(settings, definition.name(), threadPool, clusterService, transportService, actionFilters, indexNameExpressionResolver,
-                new ShardBroadcastRequest.Factory(definition), new ShardRequest.Factory(definition), ThreadPool.Names.GENERIC);
+        super(definition.name, 
+                clusterService, 
+                transportService, 
+                actionFilters, 
+                indexNameExpressionResolver,
+                (StreamInput in)->definition.createBroadcastRequest(in),
+                (StreamInput in)->definition.createShardRequest(in),
+                ThreadPool.Names.GENERIC);
         this.definition = definition;
     }
 
-    protected IndexShard getShard(IndicesService indicesService, ShardRequest request) {
+    protected IndexShard getShard(IndicesService indicesService, ShardRequest request)  throws IOException {
         ShardId shardId = request.shardId();
         return indicesService.indexServiceSafe(shardId.getIndex()).getShard(shardId.getId());
     }
@@ -87,7 +95,7 @@ public abstract class ShardTransportActionBase
     protected ShardBroadcastResponse newResponse(ShardBroadcastRequest request, AtomicReferenceArray shardsResponses,
             ClusterState clusterState) {
         if (definition.debug)
-            System.out.printf("[%s]: newBroadcastShardResponse()\n", definition.id);
+            definition.logger.info ("[%s]: newBroadcastShardResponse()\n", definition.id);
         int successfulShards = 0;
         int failedShards = 0;
         List<DefaultShardOperationFailedException> shardFailures = null;
@@ -105,7 +113,7 @@ public abstract class ShardTransportActionBase
                 if (cause == null)
                     cause = shardException;
 
-                logger.warn(shardException.getMessage(), cause);
+                definition.logger.warn(shardException.getMessage(), cause);
                 failedShards++;
                 if (shardFailures == null) {
                     shardFailures = new ArrayList<DefaultShardOperationFailedException>();
@@ -122,37 +130,37 @@ public abstract class ShardTransportActionBase
                 consolidatedResponse.consolidateResponse(resp.getTransportItem());
                 continue;
             }
-            logger.info("Got unexpected shardResponse: " + Utils.getTrimmedClass(shardResponse));
+            definition.logger.info("Got unexpected shardResponse: " + Utils.getTrimmedClass(shardResponse));
         }
 
         // logger.info("TransportAction::newResponse returning
         // BroadcastResponse...");
-        return new ShardBroadcastResponse(consolidatedResponse, shardsResponses.length(), successfulShards, failedShards, shardFailures);
-    }
-
-    @Override
-    protected ShardResponse newShardResponse() {
-        if (definition.debug)
-            System.out.printf("[%s]: newShardResponse()\n", definition.id);
-        return new ShardResponse(definition);
+        return new ShardBroadcastResponse(definition, consolidatedResponse, shardsResponses.length(), successfulShards, failedShards, shardFailures);
     }
 
     @Override
     protected ShardRequest newShardRequest(int numShards, ShardRouting shard, ShardBroadcastRequest request) {
         if (definition.debug)
-            System.out.printf("[%s]: newShardRequest()\n", definition.id);
+            definition.logger.info ("[%s]: new ShardRequest()\n", definition.id);
         return new ShardRequest(shard.shardId(), request);
+    }
+
+    @Override
+    protected ShardResponse readShardResponse(StreamInput in) throws IOException {
+        if (definition.debug)
+            definition.logger.info ("[%s]: read ShardResponse()\n", definition.id);
+        return new ShardResponse(definition, in);
     }
 
     protected abstract TransportItemBase handleShardRequest(ShardRequest request) throws Exception;
 
     @Override
-    protected ShardResponse shardOperation(ShardRequest request) throws ElasticsearchException {
+    protected ShardResponse shardOperation(ShardRequest request, Task task) throws IOException {
         try {
             return new ShardResponse(definition, request.shardId(), handleShardRequest(request));
         } catch (Throwable ex) {
-            logger.error("Node ransport error: " + ex.getMessage(), ex);
-            throw new ElasticsearchException(ex.getMessage(), ex);
+            definition.logger.error("Node ransport error: " + ex.getMessage(), ex);
+            throw new IOException(ex.getMessage(), ex);
         }
     }
 

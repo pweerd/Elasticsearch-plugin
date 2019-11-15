@@ -35,7 +35,7 @@ import nl.bitmanager.elasticsearch.extensions.Plugin;
 import nl.bitmanager.elasticsearch.transport.NodeRequest;
 import nl.bitmanager.elasticsearch.transport.NodeTransportActionBase;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
-
+//ActionType<Response extends ActionResponse>
 public class TransportAction extends NodeTransportActionBase {
 
 	@Inject
@@ -48,7 +48,7 @@ public class TransportAction extends NodeTransportActionBase {
 
 	@Override
 	protected TransportItemBase handleNodeRequest(NodeRequest request) throws Exception {
-		VersionTransportItem ret = new VersionTransportItem();
+		VersionTransportItem ret = new VersionTransportItem(ActionDefinition.INSTANCE);
 		if (debug)
 			System.out.println("VersionTransportAction:handleNodeRequest");
 		ret.addNodeVersion(clusterService.localNode().toString(), Plugin.version, getLocation());

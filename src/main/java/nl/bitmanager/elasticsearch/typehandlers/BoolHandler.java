@@ -24,11 +24,12 @@ import java.io.IOException;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.elasticsearch.index.fielddata.AtomicNumericFieldData;
+import org.elasticsearch.index.fielddata.IndexNumericFieldData.NumericType;
 
 public class BoolHandler extends TypeHandlerBase {
 
     protected BoolHandler(String type) {
-        super(type);
+        super(type, NumericType.BOOLEAN, true);
     }
 
     @Override

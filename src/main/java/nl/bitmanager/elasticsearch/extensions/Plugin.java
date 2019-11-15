@@ -41,10 +41,8 @@ import org.elasticsearch.common.settings.IndexScopedSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.index.IndexModule;
-import org.elasticsearch.index.analysis.TokenFilterFactory;
 import org.elasticsearch.index.mapper.Mapper;
 import org.elasticsearch.index.mapper.MetadataFieldMapper;
-import org.elasticsearch.indices.analysis.AnalysisModule.AnalysisProvider;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.AnalysisPlugin;
 import org.elasticsearch.plugins.MapperPlugin;
@@ -53,22 +51,20 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.search.fetch.FetchSubPhase;
 
-import nl.bitmanager.elasticsearch.analyses.TokenFilterProvider;
 import nl.bitmanager.elasticsearch.extensions.aggregations.UndupByParentsAggregatorBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.AllowNestedQueryBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQueryBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchNestedQueryBuilder;
-import nl.bitmanager.elasticsearch.mappers.TextFieldWithDocvaluesMapper;
 import nl.bitmanager.elasticsearch.search.FetchDiagnostics;
 import nl.bitmanager.elasticsearch.search.SearchParms;
 import nl.bitmanager.elasticsearch.similarity.BoundedSimilarity;
 import nl.bitmanager.elasticsearch.support.Utils;
 
 public class Plugin extends org.elasticsearch.plugins.Plugin implements AnalysisPlugin, ActionPlugin, MapperPlugin, SearchPlugin {
-
+    private static final boolean LIMITED = true;
     public static String version;
     public static final String Name = "bitmanager-extensions";
-    public static final Logger logger = Loggers.getLogger("bitmanager-ext");
+    public static final Logger logger = Loggers.getLogger(Plugin.class, "bitmanager-ext");
 
     public static Settings ESSettings;
 
@@ -123,20 +119,20 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         indexModule.addSimilarity("bounded_similarity", BoundedSimilarity::create);
     }
 
-    @Override
-    public Map<String, AnalysisProvider<TokenFilterFactory>> getTokenFilters() {
-        logger.info("Register tokenFilters");
-        logRegistered (TokenFilterProvider.allFilters.keySet(), "token filters");
-        return TokenFilterProvider.allFilters;
-    }
+  //PW7 @Override
+  //PW7 public Map<String, AnalysisProvider<TokenFilterFactory>> getTokenFilters() {
+  //PW7 logger.info("Register tokenFilters");
+  //PW7 logRegistered (TokenFilterProvider.allFilters.keySet(), "token filters");
+  //PW7 return TokenFilterProvider.allFilters;
+  //PW7 }
 
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
         List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> ret = Arrays.asList(
-                nl.bitmanager.elasticsearch.extensions.version.ActionDefinition.HANDLER,
-                nl.bitmanager.elasticsearch.extensions.view.ActionDefinition.HANDLER,
-                nl.bitmanager.elasticsearch.extensions.termlist.ActionDefinition.HANDLER,
-                nl.bitmanager.elasticsearch.extensions.cachedump.ActionDefinition.HANDLER);
+                nl.bitmanager.elasticsearch.extensions.version.ActionDefinition.INSTANCE.handler,
+                nl.bitmanager.elasticsearch.extensions.view.ActionDefinition.INSTANCE.handler,
+                nl.bitmanager.elasticsearch.extensions.termlist.ActionDefinition.INSTANCE.handler,
+                nl.bitmanager.elasticsearch.extensions.cachedump.ActionDefinition.INSTANCE.handler);
         logRegistered (ret, "transport actions", (ActionHandler<? extends ActionRequest, ? extends ActionResponse> k)->k.getAction().name());
         return ret;
     }
@@ -147,11 +143,11 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
                                              IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
         ArrayList<RestHandler> ret = new ArrayList<RestHandler>(5);
         RestControllerWrapper c = new RestControllerWrapper(restController);
-        ret.add (new nl.bitmanager.elasticsearch.extensions.version.VersionRestAction(settings, c));
-        ret.add (new nl.bitmanager.elasticsearch.extensions.help.HelpRestAction(settings, c));
-        ret.add (new nl.bitmanager.elasticsearch.extensions.view.ViewRestAction(settings, c));
-        ret.add (new nl.bitmanager.elasticsearch.extensions.termlist.TermlistRestAction(settings, c));
-        ret.add (new nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpRestAction(settings, c));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.version.VersionRestAction(c));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.help.HelpRestAction(c));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.view.ViewRestAction(c));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.termlist.TermlistRestAction(c));
+        ret.add (new nl.bitmanager.elasticsearch.extensions.cachedump.CacheDumpRestAction(c));
         logger.info(c.toString());
         return ret;
     }
@@ -233,8 +229,8 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     private static final Map<String, Mapper.TypeParser> typeParsers;
     static {
         Map<String, Mapper.TypeParser> tmp = new HashMap<String, Mapper.TypeParser>(2);
-        tmp.put (TextFieldWithDocvaluesMapper.CONTENT_TYPE, new TextFieldWithDocvaluesMapper.TypeParser());
-        tmp.put ("analyzed_keyword", new TextFieldWithDocvaluesMapper.TypeParser());
+        //pw7 tmp.put (TextFieldWithDocvaluesMapper.CONTENT_TYPE, new TextFieldWithDocvaluesMapper.TypeParser());
+        //pw7 tmp.put ("analyzed_keyword", new TextFieldWithDocvaluesMapper.TypeParser());
         typeParsers = tmp;
     }
 }

@@ -38,11 +38,11 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.engine.Engine.Searcher;
 import org.elasticsearch.index.mapper.Uid;
-import org.elasticsearch.index.mapper.UidFieldMapper;
 import org.elasticsearch.index.shard.IndexShard;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.rest.RestRequest;
 
+import nl.bitmanager.elasticsearch.transport.ActionDefinition;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 public class ViewTransportItem extends TransportItemBase {
@@ -51,10 +51,12 @@ public class ViewTransportItem extends TransportItemBase {
     public int outputLevel;
     public int docOffset;
 
-    public ViewTransportItem() {
+    public ViewTransportItem(ActionDefinition definition) {
+        super(definition);
     }
-    
-    public ViewTransportItem(RestRequest req) {
+
+    public ViewTransportItem(ActionDefinition definition, RestRequest req) {
+        super(definition);
         type = req.param("type");
         id = req.param("id");
         fieldFilter = req.param("field");
@@ -65,6 +67,7 @@ public class ViewTransportItem extends TransportItemBase {
     }
 
     public ViewTransportItem(ViewTransportItem other) {
+        super(other.definition);
         type = other.type;
         id = other.id;
         fieldFilter = other.fieldFilter;
@@ -74,6 +77,31 @@ public class ViewTransportItem extends TransportItemBase {
         docOffset = other.docOffset;
     }
 
+
+    public ViewTransportItem (ActionDefinition definition, StreamInput in) throws IOException {
+        super(definition, in);
+        type = TransportItemBase.readStr(in);
+        id = TransportItemBase.readStr(in);
+        fieldFilter = TransportItemBase.readStr(in);
+        fieldExpr = TransportItemBase.readStr(in);
+        outputFilter = TransportItemBase.readStr(in);
+        outputLevel = in.readInt();
+        docOffset = in.readInt();
+        json = readByteArray(in); 
+    }
+
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        super.writeTo(out);
+        TransportItemBase.writeStr(out, type);
+        TransportItemBase.writeStr(out, id);
+        TransportItemBase.writeStr(out, fieldFilter);
+        TransportItemBase.writeStr(out, fieldExpr);
+        TransportItemBase.writeStr(out, outputFilter);
+        out.writeInt(outputLevel);
+        out.writeInt(docOffset);
+        writeByteArray(out, json);
+    }
     @Override
     protected void consolidateResponse(TransportItemBase _other) {
         ViewTransportItem other = (ViewTransportItem)_other;
@@ -95,47 +123,23 @@ public class ViewTransportItem extends TransportItemBase {
         return builder;
     }
 
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        type = TransportItemBase.readStr(in);
-        id = TransportItemBase.readStr(in);
-        fieldFilter = TransportItemBase.readStr(in);
-        fieldExpr = TransportItemBase.readStr(in);
-        outputFilter = TransportItemBase.readStr(in);
-        outputLevel = in.readInt();
-        docOffset = in.readInt();
-        json = readByteArray(in); 
-    }
-
-    @Override
-    public void writeTo(StreamOutput out) throws IOException {
-        TransportItemBase.writeStr(out, type);
-        TransportItemBase.writeStr(out, id);
-        TransportItemBase.writeStr(out, fieldFilter);
-        TransportItemBase.writeStr(out, fieldExpr);
-        TransportItemBase.writeStr(out, outputFilter);
-        out.writeInt(outputLevel);
-        out.writeInt(docOffset);
-        writeByteArray(out, json);
-    }
-
     public void processShard (IndicesService indicesService, IndexShard indexShard) throws Exception {
         Searcher searcher = indexShard.acquireSearcher("view");
         try {
             BooleanQuery.Builder b = new BooleanQuery.Builder();
-            b.add(new TermQuery (new Term (UidFieldMapper.NAME, Uid.createUidAsBytes (type, id))), Occur.SHOULD);
+            //b.add(new TermQuery (new Term (IdFieldMapper.NAME, Uid.createUidAsBytes (type, id))), Occur.SHOULD);
             b.add(new TermQuery (new Term ("_id", Uid.encodeId(id))), Occur.SHOULD);
             b.setMinimumNumberShouldMatch(1);
             BooleanQuery bq = b.build();
             System.out.printf("TERM=%s, id=%s, type=%s\n", b, id, type);
-            List<LeafReaderContext> leaves = searcher.reader().getContext().leaves();
-            System.out.println("shard rdr: " + searcher.reader().getClass().getName());
+            List<LeafReaderContext> leaves = searcher.getTopReaderContext().leaves();
+            System.out.println("shard rdr: " + searcher.getIndexReader().getClass().getName());
             for (LeafReaderContext leaf : leaves) {
                 LeafReader leafRdr = leaf.reader();
                 IndexSearcher leafSearcher = new IndexSearcher (leafRdr);
                 //Try to locate the doc
                 TopDocs topdocs = leafSearcher.search (bq,  1);
-                if (topdocs.totalHits<=0) continue;
+                if (topdocs.totalHits.value<=0) continue;
 
                 int docid = topdocs.scoreDocs[0].doc + docOffset;
                 System.out.printf("-- doc=%d, use doc=%d\n", topdocs.scoreDocs[0].doc, docid);
