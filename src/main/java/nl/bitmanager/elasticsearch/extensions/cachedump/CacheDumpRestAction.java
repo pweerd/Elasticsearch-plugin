@@ -38,22 +38,19 @@ public class CacheDumpRestAction extends BaseRestHandler {
 
    @Inject
    public CacheDumpRestAction(RestControllerWrapper c) {
-      c.registerHandler(GET, "/_bm/cache/dump", this);
+       c.registerHandler(GET, "/_bm/cache/dump", this);
    }
 
    @Override
    public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
        final ActionDefinition def = ActionDefinition.INSTANCE;
-       try {
-           return channel -> client.execute(
-                   def.actionType, 
-                   new NodeBroadcastRequest(def, new CacheDumpTransportItem(def, request)),
-                   new RestToXContentListener<NodeBroadcastResponse>(channel)
-            );
-       } catch (Exception e) {
-           e.printStackTrace();
-           throw e;
-       }
+       final NodeBroadcastRequest broadcastReq = new NodeBroadcastRequest(def, new CacheDumpTransportItem(def, request));
+       
+       return channel -> client.execute(
+               def.actionType, 
+               broadcastReq,
+               new RestToXContentListener<NodeBroadcastResponse>(channel)
+        );
    }
 
    @Override

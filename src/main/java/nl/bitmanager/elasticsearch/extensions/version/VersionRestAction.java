@@ -41,17 +41,12 @@ public class VersionRestAction extends BaseRestHandler {
 	@Override
 	public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
 	    final ActionDefinition def = ActionDefinition.INSTANCE;
-		NodeBroadcastRequest broadcastRequest = new NodeBroadcastRequest(def, def.createTransportItem());
-		try {
-	        return channel -> client.execute(
-	               def.actionType, 
-	               new NodeBroadcastRequest(def, def.createTransportItem()),
-	               new RestToXContentListener<NodeBroadcastResponse>(channel)
-	        );
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw e;
-		}
+		final NodeBroadcastRequest broadcastRequest = new NodeBroadcastRequest(def, def.createTransportItem());
+        return channel -> client.execute(
+               def.actionType, 
+               broadcastRequest,
+               new RestToXContentListener<NodeBroadcastResponse>(channel)
+        );
 	}
 
 	@Override
