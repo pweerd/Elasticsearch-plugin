@@ -4,7 +4,7 @@ Elasticsearch is a great search engine. I love it. Always surprised how good it 
 This plugin helped me to explore a lot of the internals. It extends Elasticsearch with a few endpoints and supplies a custom similarity.
 
 ## Installation
-This plugin needs Elasticsearch 6.0 or higher. 
+This plugin needs Elasticsearch 7.0 or higher. 
 Goto [http://bitmanager.nl/es], download the appropriate version and copy it under the plugin directory of ll nodes in your cluster.
 On the above location you can also find older versions of the plugin, but no sourcecode is available for them.
 
@@ -21,7 +21,8 @@ This plugin adds following functionality:
 
 **Similarity** 
 * [Similarity plugin](#similarity)
-    
+
+
 **Diagnostic**  
 * [_termlist](#_termlist)
 * [_view](#_view)
@@ -43,7 +44,7 @@ grant {
 If these privileges are not enabled, you will get runtime errors when using either the \_bm/cache/dump api or the bm\_undup\_by\_parents aggregation. The rest should work as advertised.
 
 ## _bm
-Shows the html version of this readme. (http://localhost:9200/_bm)
+If the caller expected json, a small json excerpt is show, together with some samples. Otherwise this api will redirect to the github readme of this project. (http://localhost:9200/_bm)
 
 ## <a name="bm_version"></a>_bm/version
 This entrypoint checks if this plugin can be found on all nodes and it checks if the version and filesize is the same on all nodes.
@@ -81,7 +82,7 @@ Example to find all deleted documents that match a certain term:
 
 ## <a name="match_nested"></a>bm\_match\_nested query
 When a query is execute by Elasticsearch, it first checks if the query *can* return nested records. If so, it activates a special filter that matches only non-nested documents. So, doing a term query for a nested field will return 0 hits because of this automatic filter.
- 
+
 The bm\_match_nested query prevents this automatic filter and replaces it by a filter containing all nested documents.
 This can be useful for diagnostics, but it is mainly useful when you combine the query with the bm\_undup\_by\_parents aggregation.   It can save you a nested/reverse nested aggregation. 
 
@@ -135,7 +136,7 @@ Example to aggregate over all nested terms and undup them over a parent 'parent_
 
 ## <a name="allow_nested"></a>bm\_allow_nested query
 When a query is execute by Elasticsearch, it first checks if the query *can* return nested records. If so, it activates a special filter that matches only non-nested documents. So, doing a term query for a nested field will return 0 hits because of this automatic filter.
- 
+
 The bm\_allow_nested query prevents this automatic filter and allows you to fetch nested documents.
 This is not that useful, but in combination with aggregations it can save you a nested/reverse nested aggregation. Also, the bm\_undup\_by\_parent works nicely together with this query..
 
@@ -178,7 +179,7 @@ If the aggregator encounters a record that does not have a parent in the specifi
 In case of the '\_nested\_' you should use the bm\_allow_nested query to enable the matching of nested documents.
 The advantage is that a nested query/nested agg/reverse nested agg are no needed.
 The disadvantage is that the hits could consist of nested documents, depending on the wrapped query. Be aware of that!
- 
+
 Example.
 Suppose we have employee-records that have company-records as their parents. We want to have an aggregation on the age of employees, but counted by their companies. Answering questions like: how many companies have employees with an age of 25.
 
@@ -198,14 +199,21 @@ Suppose we have employee-records that have company-records as their parents. We 
            "undupped": {
                "bm_undup_by_parents": {
                    "parent_paths": "employee",
-                   "cache_bitsets": true
+                   "cache_bitsets": true,
+                   "resilient": false,
                }
            }
        }
    }
 }
 ```
-Specifying true on **cache_bitsets** forces the parent bitsets to be cached for future usage. The default is false.  
+Parameter | Default  | Meaning  
+:------------- | :---- | :-----
+parent_paths    |    | Comma separated list of parent definitions. \_nested\_ is a placeholder for a reverse nested aggregation.
+cache_bitsets     | true     | Parent bitsets are cached for future usage.
+resilient      | false  | if false: throws an exception if some parent path does not exist.
+compensate_non_existing | true | compensates for non-existing parents 
+
 You can view the cached bitsets by using the [_bm/cache/dump](#_bm_cache_dump) api.
 
 **Note**: this aggregation only works if you have enabled the privileges as specified [here](#priv).
@@ -226,7 +234,7 @@ The similarity needs to be switched on in the index settings, like: (with defaul
             "max_idf": 0.0,
             "max_tf", 0.2,
             "force_tf": -1,
-            "bias_tf": 0.6;
+            "bias_tf": 0.6,
             "discount_overlaps": true);
          }
       }
@@ -270,7 +278,7 @@ curl -XGET 'http://localhost:9200/{index}/_termlist'
 curl -XGET 'http://localhost:9200/_termlist/{field}'
 curl -XGET 'http://localhost:9200/{index}/_termlist/{field}'
 ```
-   
+
 {index} can be a ,-separated list of index names to limit the termlist generation.
 If no {index} is specified, all indexes will be queried.
 
@@ -311,7 +319,7 @@ The returned result can be limited by supplying one or more params on the url:
    ?minCount=<min>         returns only items that occur >= min times. If 0<min<1, min is recalculated by multiplying it by the max term count.
    ?maxCount=<max>         returns only items that occur <= max times. If 0<max<1, max is recalculated by multiplying it by the max term count.
 ```
-   
+
 **Collision detection**  
 To check wether terms collide after mapping terms, use the following param:
 
@@ -334,7 +342,7 @@ Output is like:
 },
 etc...   
 ```
-         
+
 **Term Occurrence**  
 To get the fields where a term occurs, apply the ?term=<term> to the url.
 If this param is found, a list of fields where the term occurs is returned.
