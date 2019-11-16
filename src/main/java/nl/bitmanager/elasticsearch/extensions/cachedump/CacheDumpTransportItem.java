@@ -59,6 +59,10 @@ public class CacheDumpTransportItem extends TransportItemBase {
 
     public CacheDumpTransportItem(ActionDefinition definition, RestRequest req) {
         super(definition);
+        if (definition.debug) {
+            definition.logger.info("CacheDumpTransportItem::CacheDumpTransportItem from req.");
+            definition.logger.info("Params=" + req.params().toString());
+        }
         indexExpr = req.param("index_expr");
         
         String sortType = req.param("sort", "size").toLowerCase();
@@ -79,7 +83,7 @@ public class CacheDumpTransportItem extends TransportItemBase {
         } else if (type.equals("bitset")) {
             cacheType = CacheType.Bitset;
             if (indexExpr == null) indexExpr = "(.*)/$1";
-        }  else throw new RuntimeException ("Unsupported value for type: [" + type + "]. Valid: query, request.");
+        }  else throw new RuntimeException ("Unsupported value for type: [" + type + "]. Valid: query, request, bitset.");
 
         if ("null".equals(indexExpr) || (indexExpr != null && indexExpr.length()==0)) indexExpr = null;
     }
@@ -164,11 +168,10 @@ public class CacheDumpTransportItem extends TransportItemBase {
     
     @Override
     public String toString () {
-        return String.format("%s: expr=%s, sortq=%, type=%s, creationid=%s", Utils.getTrimmedClass(this), this.indexExpr, this.sort, cacheType, System.identityHashCode(this));
+        return String.format("%s: expr=%s, sortq=%s, type=%s, creationid=%s", Utils.getTrimmedClass(this), this.indexExpr, this.sort, cacheType, System.identityHashCode(this));
     }
     
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-        //System.out.println ("toXC: " + this);
         if (errorMsg != null && errorMsg.length()>0)
             builder.field("error", errorMsg);
         builder.startObject("request");
