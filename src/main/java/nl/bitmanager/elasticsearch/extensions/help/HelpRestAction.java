@@ -30,9 +30,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 
 import nl.bitmanager.elasticsearch.extensions.RestControllerWrapper;
-//pw7 import nl.bitmanager.elasticsearch.extensions.view.ActionDefinition;
 import nl.bitmanager.elasticsearch.support.HtmlRestResponse;
-import nl.bitmanager.elasticsearch.support.Utils;
 
 public class HelpRestAction extends BaseRestHandler {
 
@@ -44,20 +42,15 @@ public class HelpRestAction extends BaseRestHandler {
     public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
         HtmlRestResponse resp;
         String accept = request.header("Accept");
-        System.out.println("HELP: Accept=" + accept);
 
         if (accept != null && (accept.indexOf("application/json") >=0 || accept.indexOf("text/javascript") >= 0 )) {
-            System.out.println("HELP: sending json");
             InputStream strm = this.getClass().getClassLoader().getResourceAsStream("help.json");
-            System.out.println("strm=" + strm + ", client=" + Utils.getTrimmedClass(client));
             int avail = strm.available();
-            System.out.println("avail=" + avail);
             byte[] respBytes = new byte[avail];
             strm.read(respBytes);
             strm.close();
             resp = new HtmlRestResponse(RestStatus.OK, respBytes);
         } else {
-            System.out.println("HELP: sending redirect");
             resp = new HtmlRestResponse(RestStatus.FOUND, "https://github.com/pweerd/Elasticsearch-plugin/#bitmanagers-elasticsearch-plugin".getBytes("UTF-8"));
             resp.addHeader("Location", "https://github.com/pweerd/Elasticsearch-plugin/#bitmanagers-elasticsearch-plugin");
         }
