@@ -1,23 +1,36 @@
 {
    "api": {
-       "_bm": "Shows this page",
-       "_bm/cache/dump": "Dumps the caches (experimental)",   
-       "_bm/version": "Shows loaded versions of this plugin plus some settings",       
-       "_view": "Shows contents of a record. {index}/{type}/{id}/_view",
-       "_termlist": "Shows indexed terms. {index}/_termlist/{field}"
-   },    
-   "example similarity": {
-       "settings": {
-          "similarity": {
-             "default": {
-                "type": "bounded_similarity",
-                "max_idf": 0.0,
-                "max_tf": 0.2,
-                "force_tf": -1,
-                "bias_tf": 0.6;
-                "discount_overlaps": true
-             }
-          }
-       }
+      "_bm": "Shows this page",
+      "_bm/cache/dump": "Dumps the caches (experimental)",
+      "_bm/version": "Shows loaded versions of this plugin plus some settings",
+      "_view": "Shows contents of a record. {index}/{type}/{id}/_view",
+      "_termlist": "Shows indexed terms. {index}/_termlist/{field}"
+   },
+   "example": {
+      "similarity_example": {
+         "settings": {
+            "similarity": {
+               "default": {
+                  "type": "bounded_similarity",
+                  "max_idf": 0.0,
+                  "max_tf": 0.2,
+                  "force_tf": -1,
+                  "bias_tf": 0.6,
+                  "discount_overlaps": true
+               }
+            }
+         }
+      },
+      "aggregator_example": {
+         "aggs": {
+            "undup": {
+               "bm_undup_by_parents": {
+                  "cache_bitsets": true,
+                  "resilient": false,
+                  "parent_paths": "_nested_,lvl1,lvl0"
+               }
+            }
+         }
+      }
    }
 }
