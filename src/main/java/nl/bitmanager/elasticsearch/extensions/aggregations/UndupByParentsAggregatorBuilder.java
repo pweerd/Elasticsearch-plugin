@@ -27,6 +27,8 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.Query;
 import org.elasticsearch.SpecialPermission;
 import org.elasticsearch.common.ParsingException;
@@ -46,6 +48,8 @@ import org.elasticsearch.search.internal.SearchContext;
 
 public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<UndupByParentsAggregatorBuilder> {
     public static final String NAME = "bm_undup_by_parents";
+    public static final Logger logger = LogManager.getLogger(NAME);
+
     
     public final String[] parentPaths;
     public final int debug_lvl;
@@ -174,7 +178,6 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
             case VALUE_BOOLEAN:
                 if ("resilient".equals(currentFieldName)) {
                     resilient = parser.booleanValue();
-                    if (resilient) throw new RuntimeException ("Resilient=true is currently not supported.");
                     continue;
                 }
                 if ("cache_bitsets".equals(currentFieldName)) {
@@ -227,7 +230,8 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
             configs = resolveConfigs (context);
         } catch (Exception e) {
             if (!resilient) throw e;
-            return new NoopAggregatorFactory(this, context, parent, subfactoriesBuilder, metaData, e.getMessage());
+            logger.warn("Initialisation failure: %s. Continue because resilient=true.", e.getMessage());
+            configs = null;
         }
         return new UndupByParentsAggregatorFactory(this, configs, context, parent, subfactoriesBuilder, metaData);
     }

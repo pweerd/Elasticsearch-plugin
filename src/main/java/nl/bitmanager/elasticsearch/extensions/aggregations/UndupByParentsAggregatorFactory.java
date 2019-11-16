@@ -55,33 +55,27 @@ public class UndupByParentsAggregatorFactory extends AggregatorFactory {
     }
 
     
-    private Aggregator createEmpty (Aggregator parent, 
-            List<PipelineAggregator> pipelineAggregators, 
-            Map<String, Object> metaData,
-            String why) throws IOException {
-        if (debug_lvl > 0) System.out.printf("-- createEmpty because %s", why);
-        return new NoopAggregator(name, context, parent, pipelineAggregators, metaData, why);
-    }
-
     @Override
     public Aggregator createInternal(Aggregator parent, 
             boolean collectsFromSingleBucket,
             List<PipelineAggregator> pipelineAggregators, 
             Map<String, Object> metaData) throws IOException {
         
-        if (valuesSourceConfigs==null) {
-            return createEmpty(parent, pipelineAggregators, metaData, "valuesSourceConfigs==null");
-        }
-        
-        QueryShardContext shardCtx = context.getQueryShardContext();
-        WithOrdinals valuesSources[] = new WithOrdinals[parentPaths.length];
-        for (int i=0; i<valuesSources.length; i++) {
-            if (valuesSourceConfigs[i] == null) continue;
-            valuesSources[i] = valuesSourceConfigs[i].toValuesSource(shardCtx);
-            if (valuesSources[i] == null) {
-                return createEmpty(parent, pipelineAggregators, metaData, "valuesSource==null for type=" + parentPaths[i]);
+        WithOrdinals valuesSources[] = null;
+        if (valuesSourceConfigs!=null) {
+            QueryShardContext shardCtx = context.getQueryShardContext();
+            valuesSources = new WithOrdinals[parentPaths.length];
+            for (int i=0; i<valuesSources.length; i++) {
+                if (valuesSourceConfigs[i] == null) continue;
+                valuesSources[i] = valuesSourceConfigs[i].toValuesSource(shardCtx);
+                if (valuesSources[i] == null) {
+                    UndupByParentsAggregatorBuilder.logger.warn("valuesSource==null for type=" + parentPaths[i]);
+                    valuesSources = null;
+                    break;
+                }
             }
         }
+        
         
         if (debug_lvl > 0) System.out.printf("-- Create aggregation from factory\n");
         return new UndupByParentsAggregator(this, name, context, parent, pipelineAggregators, metaData, valuesSources);

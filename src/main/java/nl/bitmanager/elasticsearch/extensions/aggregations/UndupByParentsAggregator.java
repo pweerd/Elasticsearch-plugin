@@ -74,7 +74,14 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
     private ObjectArray<FixedBitSet> bitsetPerBucket; // administrate all parent ords per bucket
     private int maxBucket;
 
-
+    private static long time_get() {
+        return System.nanoTime();
+    }
+    private static long time_dump_and_get(long t0, String what) {
+        double delta = (System.nanoTime() - t0) / 1000000.0;
+        System.out.println (String.format("ELAPSED for [%s]: %.3f ms", what, delta));
+        return System.nanoTime();
+    }
 
     protected UndupByParentsAggregator(UndupByParentsAggregatorFactory factory,
             String name, 
@@ -90,6 +97,14 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
         this.compensateNonExisting = factory.compensateNonExisting;
         this.debug_lvl = factory.debug_lvl;
         
+        //Early out for NO-OP aggregations
+        if (valuesSources==null) {
+            UndupByParentsAggregatorBuilder.logger.warn("UndupByParentsAggregator: NO-OP");
+            mainDocsFilter = null;
+            mainDocsBitsetProducer = null;
+            return;
+        } 
+
         if (valuesSources[0] == null) { //1st level is reverseNested?
             mainDocsFilter = Queries.newNonNestedFilter(context.mapperService().getIndexSettings().getIndexVersionCreated()); 
             mainDocsBitsetProducer = context.bitsetFilterCache().getBitSetProducer(mainDocsFilter);
@@ -114,12 +129,13 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
             if (debug_lvl > 0)
                 System.out.printf("Allocated %d bucket bitsets in advance for the 1st level\n", bitsetPerBucket.size());
         }
-
     }
 
     @Override
     protected LeafBucketCollector getLeafCollector(LeafReaderContext ctx, LeafBucketCollector sub) throws IOException {
         LeafBucketCollector ret;
+        if (valuesSources==null) return NoopCollector.INSTANCE;
+        
         if (valuesSources[0] == null) {  //First lvl is reverse-nested?
             ReverseNestedCollector frcCollector = valuesSources.length==1 ? new FinalReverseNestedCollector(this, ctx)
                                                                           : new IntermediateReverseNestedParentCollector(this, ctx);
@@ -133,15 +149,17 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
         return ret;
     }
 
+    private long countForBucket (long bucket) {
+        return counts==null || ((int)bucket) >= counts.size() ? 0 : counts.get(bucket); 
+    }
     @Override
     public double metric(long owningBucketOrd) {
-        return ((int)owningBucketOrd) >= counts.size() ? 0 : counts.get(owningBucketOrd); 
+        return countForBucket(owningBucketOrd); 
     }
 
     @Override
     public InternalAggregation buildAggregation(long bucket) throws IOException {
-        int cnt = ((int)bucket) >= counts.size() ? 0 : (int)counts.get(bucket); 
-        return new UndupByParentsInternal(name, cnt, pipelineAggregators(), metaData());
+        return new UndupByParentsInternal(name, countForBucket(bucket), pipelineAggregators(), metaData());
     }
 
     @Override
@@ -152,7 +170,10 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
 
     @Override
     protected void doPostCollection() throws IOException {
+        if (this.valuesSources==null) return;
+        
         if (debug_lvl > 0) System.out.println("POST");
+        long t0 = time_get();
         //Reverse nested only?
         if (docCounts != null) {
             if (debug_lvl > 0) System.out.printf("POST: only revrse: converting %d counts\n", docCounts.size());
@@ -204,6 +225,7 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
             
             Weight w = valuesSourceConfigs[lvl-1].parentFilter.createWeight(context.searcher(), ScoreMode.COMPLETE_NO_SCORES, 1.0f);
             
+            long t1 = time_get();
             for (LeafReaderContext leaf : rootContext.leaves()) {
                 final SortedSetDocValues globalOrdinals = valuesSources[lvl-1].globalOrdinalsValues(leaf);
                 final SortedSetDocValues globalOrdinalsParent = docValuesArr [leaf.ord];
@@ -221,13 +243,17 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
                     undupSegment(parentScorer.iterator(), liveDocs, combinedOrdinals, globalOrdinals, globalOrdinalsParent, nextBitsetPerBucket);
                 }
             }
+            t1 = time_dump_and_get (t1, "dopost undup segments");
             this.bitsetPerBucket.close();
             this.bitsetPerBucket = nextBitsetPerBucket;
         }
+        t0 = time_dump_and_get (t0, "dopost parent-child");
         
         compensateForNonExisting();
+        t0 = time_dump_and_get (t0, "dopost compensateForNonExisting");
         this.counts = convertBitsetPerBucketIntoCounts (bitsetPerBucket);
-    }
+        t0 = time_dump_and_get (t0, "convertBitsetPerBucketIntoCounts");
+   }
      
     /**
      * Compensating for non existing records is similar to what we do in parent undupping in doPostCollection.
@@ -310,9 +336,11 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
             final SortedSetDocValues globalOrdinals,
             final SortedSetDocValues globalOrdinalsParent, 
             ObjectArray<FixedBitSet> nextBitsetPerBucket) throws IOException {
+        
+        final boolean debug = this.debug_lvl > 1;
         while (true) {
             int docId = iter.nextDoc();
-            System.out.printf ("doc=%d\n", docId); 
+            if (debug) System.out.printf ("doc=%d\n", docId); 
 
             if (docId == DocIdSetIterator.NO_MORE_DOCS) break;
             if (liveDocs != null && liveDocs.get(docId) == false) {
@@ -341,9 +369,11 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
             FixedBitSet combinedOrdinals,
             final SortedSetDocValues globalOrdinals,
             ObjectArray<FixedBitSet> nextBitsetPerBucket) throws IOException {
+
+        final boolean debug = this.debug_lvl > 1;
         while (true) {
             int docId = iter.nextDoc();
-            System.out.printf ("doc=%d\n", docId); 
+            if (debug) System.out.printf ("doc=%d\n", docId); 
 
             if (docId == DocIdSetIterator.NO_MORE_DOCS) break;
             if (liveDocs != null && liveDocs.get(docId) == false) {
@@ -452,6 +482,26 @@ public class UndupByParentsAggregator extends NumericMetricsAggregator.SingleVal
         }
         return max;
     }
+    
+    
+    
+    
+    
+    /**
+     * Noop collector.
+     */
+    protected static class NoopCollector extends LeafBucketCollector {
+        public static NoopCollector INSTANCE = new NoopCollector();
+        private NoopCollector() {
+        }
+
+        @Override
+        public void collect(int doc, long bucket) throws IOException {
+            // do nothing
+        }
+    }
+    
+    
     /**
      * Base class for all leaf collectors.
      */
