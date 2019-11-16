@@ -26,7 +26,7 @@ import java.util.Locale;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
-public class BoundedScorerNorms extends SimScorer {
+public class BoundedScorer extends SimScorer {
     private final Explanation idfExplain;
 
     private final float weight_idf;
@@ -37,7 +37,7 @@ public class BoundedScorerNorms extends SimScorer {
     private final float forceTf;
 
 
-    public BoundedScorerNorms(BoundedSimilarity parent, Explanation idfExplain, float boost, float idf)
+    public BoundedScorer(BoundedSimilarity parent, Explanation idfExplain, float boost, float idf)
     {
         final BoundedSimilaritySettings settings = parent.settings;
         this.idfExplain = idfExplain;

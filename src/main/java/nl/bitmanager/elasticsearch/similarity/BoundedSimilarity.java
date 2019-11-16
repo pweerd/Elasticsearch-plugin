@@ -71,7 +71,7 @@ public class BoundedSimilarity extends Similarity {
            totalScore = idf * boost;
            idfExplain = Explanation.match (totalScore, String.format (Locale.ROOT, "boost=%.3f, idf=%.3f (docs=%d out of %d, maxIdf=%.3f)", boost, idf, maxDocFreq, totalDocs, settings.maxIdf));
         }
-        return new BoundedScorerNorms (this, idfExplain, boost, idf);
+        return new BoundedScorer (this, idfExplain, boost, idf);
     }
 
 
