@@ -34,7 +34,7 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
 public class VersionTransportItem extends TransportItemBase {
-	protected TreeMap<String, NodeVersion> nodeVersions;
+    protected TreeMap<String, NodeVersion> nodeVersions;
 
     public VersionTransportItem(ActionDefinition definition) {
         super(definition);
@@ -67,114 +67,114 @@ public class VersionTransportItem extends TransportItemBase {
     }
 
     public Map<String, NodeVersion> getNodeVersions() {
-		return nodeVersions;
-	}
+        return nodeVersions;
+    }
 
-	private static TreeMap<String, NodeVersion> createMap() {
-		return new TreeMap<String, NodeVersion>();
-	}
+    private static TreeMap<String, NodeVersion> createMap() {
+        return new TreeMap<String, NodeVersion>();
+    }
 
-	public void addNodeVersion(String node, String version, URL location) {
-		if (nodeVersions == null) {
-			nodeVersions = createMap();
-		}
-		if (nodeVersions.containsKey(node))
-			return;
-		nodeVersions.put(node, new NodeVersion(definition, node, version, location));
-	}
+    public void addNodeVersion(String node, String version, URL location) {
+        if (nodeVersions == null) {
+            nodeVersions = createMap();
+        }
+        if (nodeVersions.containsKey(node))
+            return;
+        nodeVersions.put(node, new NodeVersion(definition, node, version, location));
+    }
 
-	@Override
-	public void consolidateResponse(TransportItemBase _other) {
-		VersionTransportItem other = (VersionTransportItem) _other;
-		if (other.nodeVersions == null)
-			return;
+    @Override
+    public void consolidateResponse(TransportItemBase _other) {
+        VersionTransportItem other = (VersionTransportItem) _other;
+        if (other.nodeVersions == null)
+            return;
 
-		if (nodeVersions == null) {
-			nodeVersions = createMap();
-		}
-		for (Entry<String, NodeVersion> kvp : other.nodeVersions.entrySet()) {
-			NodeVersion nv = kvp.getValue();
-			String node = nv.getNode();
-			if (nodeVersions.containsKey(node))
-				continue;
-			nodeVersions.put(node, nv);
-		}
-	}
+        if (nodeVersions == null) {
+            nodeVersions = createMap();
+        }
+        for (Entry<String, NodeVersion> kvp : other.nodeVersions.entrySet()) {
+            NodeVersion nv = kvp.getValue();
+            String node = nv.getNode();
+            if (nodeVersions.containsKey(node))
+                continue;
+            nodeVersions.put(node, nv);
+        }
+    }
 
-	public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-		builder.field("plugin-version", Plugin.version);
+    public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+        builder.field("plugin-version", Plugin.version);
 
-		// Create a map to collect all keys of the settings that differ
-		Map<String, String> settingDifferences = new TreeMap<String, String>();
+        // Create a map to collect all keys of the settings that differ
+        Map<String, String> settingDifferences = new TreeMap<String, String>();
 
-		// Check version differences
-		boolean allVersionsOK = true; // response.getFailedShards() == 0;
-		NodeVersion first = null;
-		NodeVersion firstDiff = null;
-		String diffReason = null;
-		int activeNodes = 0;
-		if (nodeVersions != null) {
-			activeNodes = nodeVersions.size();
-			for (Entry<String, NodeVersion> kvp : nodeVersions.entrySet()) {
-				NodeVersion nv = kvp.getValue();
-				if (first == null) {
-					first = nv;
-					continue;
-				}
-				if (firstDiff != null)
-					continue;
+        // Check version differences
+        boolean allVersionsOK = true; // response.getFailedShards() == 0;
+        NodeVersion first = null;
+        NodeVersion firstDiff = null;
+        String diffReason = null;
+        int activeNodes = 0;
+        if (nodeVersions != null) {
+            activeNodes = nodeVersions.size();
+            for (Entry<String, NodeVersion> kvp : nodeVersions.entrySet()) {
+                NodeVersion nv = kvp.getValue();
+                if (first == null) {
+                    first = nv;
+                    continue;
+                }
+                if (firstDiff != null)
+                    continue;
 
-				diffReason = first.getDifference(settingDifferences, nv);
-				if (diffReason == null)
-					continue; // no diff...
+                diffReason = first.getDifference(settingDifferences, nv);
+                if (diffReason == null)
+                    continue; // no diff...
 
-				allVersionsOK = false;
-				firstDiff = nv;
-				break;
-			}
-		}
-		if (first == null)
-			allVersionsOK = false;
+                allVersionsOK = false;
+                firstDiff = nv;
+                break;
+            }
+        }
+        if (first == null)
+            allVersionsOK = false;
 
-		// export node versions
-		builder.field("all-versions-ok", allVersionsOK);
-		if (settingDifferences.size() > 0)
-			builder.field("settings-differences", getDifferencesAsString(settingDifferences));
-		if (firstDiff != null) {
-			builder.startObject("version-diff");
-			builder.field("node", firstDiff.getNode());
-			builder.field("reason", diffReason);
-			builder.endObject();
-		}
+        // export node versions
+        builder.field("all-versions-ok", allVersionsOK);
+        if (settingDifferences.size() > 0)
+            builder.field("settings-differences", getDifferencesAsString(settingDifferences));
+        if (firstDiff != null) {
+            builder.startObject("version-diff");
+            builder.field("node", firstDiff.getNode());
+            builder.field("reason", diffReason);
+            builder.endObject();
+        }
 
-		builder.field("activeNodes", activeNodes);
-		builder.startArray("nodes");
-		if (nodeVersions != null) {
-			first = null;
-			for (Entry<String, NodeVersion> kvp : nodeVersions.entrySet()) {
-				NodeVersion nv = kvp.getValue();
-				builder.startObject();
-				nv.exportToJson(builder, first);
-				builder.endObject();
-				if (first == null)
-					first = nv;
-			}
-		}
-		builder.endArray();
-		return builder;
-	}
+        builder.field("activeNodes", activeNodes);
+        builder.startArray("nodes");
+        if (nodeVersions != null) {
+            first = null;
+            for (Entry<String, NodeVersion> kvp : nodeVersions.entrySet()) {
+                NodeVersion nv = kvp.getValue();
+                builder.startObject();
+                nv.exportToJson(builder, first);
+                builder.endObject();
+                if (first == null)
+                    first = nv;
+            }
+        }
+        builder.endArray();
+        return builder;
+    }
 
-	private static String getDifferencesAsString(Map<String, String> differences) {
-		if (differences == null || differences.size() == 0)
-			return null;
+    private static String getDifferencesAsString(Map<String, String> differences) {
+        if (differences == null || differences.size() == 0)
+            return null;
 
-		StringBuilder bldr = new StringBuilder();
-		for (Map.Entry<String, String> entry : differences.entrySet()) {
-			if (bldr.length() > 0)
-				bldr.append(", ");
-			bldr.append(entry.getKey());
-		}
-		return bldr.toString();
-	}
+        StringBuilder bldr = new StringBuilder();
+        for (Map.Entry<String, String> entry : differences.entrySet()) {
+            if (bldr.length() > 0)
+                bldr.append(", ");
+            bldr.append(entry.getKey());
+        }
+        return bldr.toString();
+    }
 
 }

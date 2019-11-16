@@ -87,7 +87,7 @@ public class ViewTransportItem extends TransportItemBase {
         outputFilter = TransportItemBase.readStr(in);
         outputLevel = in.readInt();
         docOffset = in.readInt();
-        json = readByteArray(in); 
+        json = readByteArray(in);
     }
 
     @Override
@@ -108,7 +108,7 @@ public class ViewTransportItem extends TransportItemBase {
         if (other.json==null) return;
         json = other.json;
     }
-    
+
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject("request");

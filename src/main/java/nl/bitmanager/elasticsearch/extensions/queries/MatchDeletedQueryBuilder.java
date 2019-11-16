@@ -40,7 +40,7 @@ public class MatchDeletedQueryBuilder extends AbstractQueryBuilder<MatchDeletedQ
     public MatchDeletedQueryBuilder(QueryBuilder sub) {
         subBuilder = sub;
     }
-    
+
     /**
      * Read from a stream.
      */
@@ -73,18 +73,18 @@ public class MatchDeletedQueryBuilder extends AbstractQueryBuilder<MatchDeletedQ
                     throwUnsupportedField (parser,NAME);
             } else if (token == XContentParser.Token.START_OBJECT) {
                 sub = parseInnerQueryBuilder(parser);
-            } else {    
+            } else {
                 throwUnexpectedToken (parser, NAME);
             }
         }
 
         return new MatchDeletedQueryBuilder(sub);
     }
-    
+
     @Override
     protected Query doToQuery(QueryShardContext context) throws IOException {
         Query sub = null;
-        
+
         if (subBuilder != null) sub = subBuilder.toQuery(context);
         return new MatchDeletedQuery (sub);
     }

@@ -137,7 +137,7 @@ public class MatchNestedQueryBuilder extends AbstractQueryBuilder<MatchNestedQue
                 return new MatchNestedQueryBuilder(rewrittenQuery);
             }
         }
-        
+
         return this;
     }
 

@@ -40,7 +40,7 @@ public class GeoPointHandler extends SafeTypeHandler {
             double lon = GeoEncodingUtils.decodeLongitude(bytes, i*8+4);
             ret[i] = String.format("%f; %f", lat, lon);
         }
-        return ret; 
+        return ret;
     }
 
     @Override
@@ -51,7 +51,7 @@ public class GeoPointHandler extends SafeTypeHandler {
         int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {
-            for (int i = 0; i < N; i++) 
+            for (int i = 0; i < N; i++)
                 ret[i] = dvs.nextValue().toString();
         }
         return ret;
@@ -61,5 +61,5 @@ public class GeoPointHandler extends SafeTypeHandler {
     public byte[] toBytes(String s) {
         throw new RuntimeException ("GeopointHandler.toBytes not supported");
     }
-    
+
 }

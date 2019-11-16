@@ -25,12 +25,12 @@ import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.xcontent.XContentParser;
 
 public abstract class QueryBuilderHelper {
-    
+
     protected static void throwUnexpectedToken (XContentParser parser, String name) throws IOException {
         throw new ParsingException(parser.getTokenLocation(),
                         String.format("Unexpected token %s in [%s] query.", parser.currentToken(), name));
     }
-    
+
     protected static void throwUnsupportedField (XContentParser parser, String name) throws IOException {
          throw new ParsingException(parser.getTokenLocation(),
                             String.format("Query [%s] does not support [%s]", name, parser.currentName()));

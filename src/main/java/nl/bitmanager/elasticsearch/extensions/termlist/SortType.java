@@ -23,15 +23,15 @@ public class SortType {
     public final static int SORT_TERM = 1;
     public final static int SORT_COUNT = 2;
     public final static int SORT_REVERSE = 0x100;
-    public final int order;    
+    public final int order;
 
     public SortType (String sort) {
         int sortType = SORT_TERM;
         if (sort != null && sort.length() > 0) {
             sort = sort.toLowerCase();
-            if (sort.startsWith("term")) 
+            if (sort.startsWith("term"))
                 sortType = SORT_TERM;
-            else if (sort.startsWith("-term")) 
+            else if (sort.startsWith("-term"))
                 sortType = SORT_TERM | SORT_REVERSE;
             else if (sort.startsWith("count"))
                 sortType = SORT_COUNT;
@@ -49,7 +49,7 @@ public class SortType {
     public SortType(int v) {
         this.order = v;
     }
-    
+
     public String toString() {
         switch (order) {
         case SORT_TERM: return "term";

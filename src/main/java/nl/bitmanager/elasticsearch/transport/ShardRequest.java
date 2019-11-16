@@ -54,7 +54,7 @@ public class ShardRequest extends BroadcastShardRequest {
             System.out.printf("[%s]: readFrom\n", id);
         transportItem = definition.createTransportItem(in);
     }
-    
+
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         if (definition.debug)

@@ -23,7 +23,7 @@ import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestStatus;
 
 public class HtmlRestResponse extends BytesRestResponse {
-   public final static String CONTENT_TYPE_HTML = "text/html; charset=UTF-8"; 
+   public final static String CONTENT_TYPE_HTML = "text/html; charset=UTF-8";
 
    public HtmlRestResponse(RestStatus status, String content) {
        super(status, CONTENT_TYPE_HTML, content);

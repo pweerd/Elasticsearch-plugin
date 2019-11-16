@@ -47,24 +47,24 @@ public class BoundedScorerNorms extends SimScorer {
         weight_idf = idf;
         weight_boost = boost;
     }
-    
+
     public float scoreTf (int docLen, float freq) {
         if (forceTf > 0) freq = forceTf;
         else if (freq > 255f) freq = 255f;
         return (float)(maxTf * Math.log(biasTf+freq) / Math.log(biasTf + docLen));
 
     }
-    
+
     private float score_tf(float freq, long norm) {
         float tf = (forceTf > 0) ? (float)forceTf : freq;
         if (tf > 255.0f) tf = 255.0f;
-        
+
         float fnorm = (float)norm;
-        if (tf>fnorm) tf = fnorm; 
-        
+        if (tf>fnorm) tf = fnorm;
+
         return (float)(maxTf * Math.log(biasTf+tf) / Math.log(biasTf + fnorm));
     }
-    
+
     @Override
     public float score(float freq, long norm) {
         return (float)(weight_boost*(weight_idf + maxTf * score_tf(freq, norm)));
@@ -74,9 +74,9 @@ public class BoundedScorerNorms extends SimScorer {
     @Override
     public Explanation explain(Explanation freq, long norm) {
         float tfBoost = maxTf * score_tf((float)freq.getValue(), norm);
-        float score = weight_boost*(weight_idf+tfBoost); 
-        
-        List<Explanation> sub = new ArrayList<Explanation>(); 
+        float score = weight_boost*(weight_idf+tfBoost);
+
+        List<Explanation> sub = new ArrayList<Explanation>();
         String msg = String.format (Locale.ROOT, "tfBoost (tf=%.1f, fieldlen=%d, maxTf=%.2f, forceTf=%d, bias=%.2f)", freq.getValue(), norm, maxTf, forceTf, biasTf);
         sub.add (idfExplain);
         sub.add (Explanation.match (tfBoost, msg));

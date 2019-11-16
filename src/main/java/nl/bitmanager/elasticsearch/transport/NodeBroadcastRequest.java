@@ -36,12 +36,12 @@ public class NodeBroadcastRequest extends BaseNodesRequest<NodeBroadcastRequest>
         this.id = definition.id + ".NodeBroadcastRequest";
         this.transportItem = transportItem;
     }
-    
+
     public NodeBroadcastRequest(NodeActionDefinitionBase definition, StreamInput in) throws IOException {
         super (in);
         this.definition = definition;
         this.id = definition.id + ".NodeBroadcastRequest";
-        
+
         this.transportItem = definition.createTransportItem(in);
         if (definition.debug)
             System.out.printf("[%s]: readFrom->%s\n", id, transportItem);

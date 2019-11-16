@@ -47,7 +47,7 @@ public class TermlistRestAction extends BaseRestHandler {
     @Override
     public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
         TermlistTransportItem item = new TermlistTransportItem(ActionDefinition.INSTANCE, request);
-        ShardBroadcastRequest broadcastRequest = new ShardBroadcastRequest(ActionDefinition.INSTANCE, item, request.param("index")); 
+        ShardBroadcastRequest broadcastRequest = new ShardBroadcastRequest(ActionDefinition.INSTANCE, item, request.param("index"));
         try {
             return channel -> client.admin().indices().execute(ActionDefinition.INSTANCE.actionType, broadcastRequest,
                     new RestToXContentListener<ShardBroadcastResponse>(channel));

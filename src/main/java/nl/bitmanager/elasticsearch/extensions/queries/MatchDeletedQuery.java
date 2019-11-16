@@ -42,7 +42,7 @@ import org.apache.lucene.util.Bits;
 public class MatchDeletedQuery extends Query {
 
     protected final Query subQuery;
-    
+
     public MatchDeletedQuery(Query sub) {
         subQuery = sub!=null ? sub : new MatchAllDocsQuery();
     }
@@ -55,7 +55,7 @@ public class MatchDeletedQuery extends Query {
     @Override
     public boolean equals(Object obj) {
         if (obj==null || obj.getClass() != getClass()) return false;
-        
+
         MatchDeletedQuery other = (MatchDeletedQuery)obj;
         return subQuery.equals(other.subQuery);
     }
@@ -64,20 +64,20 @@ public class MatchDeletedQuery extends Query {
     public int hashCode() {
         return super.classHash() ^ subQuery.hashCode();
     }
-    
+
     @Override
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
         Weight sub = subQuery.createWeight(searcher, scoreMode, boost);
         return new _Weight (this, sub);
     }
-    
+
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
         Query rewritten = subQuery.rewrite(reader);
         return rewritten==subQuery ? this : new MatchDeletedQuery(rewritten);
     }
 
-    
+
     protected static class _Weight extends Weight {
         protected final Query subQuery;
         protected final Weight subWeight;
@@ -102,7 +102,7 @@ public class MatchDeletedQuery extends Query {
         public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
             return new _BulkScorer (context, subWeight.bulkScorer(context)) ;
         }
-        
+
         @Override
         public Scorer scorer(LeafReaderContext context) throws IOException {
             return subWeight.scorer(context);
@@ -118,7 +118,7 @@ public class MatchDeletedQuery extends Query {
     protected static class _BulkScorer extends BulkScorer {
         protected final BulkScorer sub;
         protected Bits prevBits, newBits;
-        protected int numDocs; 
+        protected int numDocs;
 
         public _BulkScorer (LeafReaderContext context, BulkScorer sub) {
             this.sub = sub;
@@ -129,14 +129,14 @@ public class MatchDeletedQuery extends Query {
         public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
             //System.out.printf("score: accept=%s, min=%d, max=%d, docs=%d\n", _tos(acceptDocs), min, max, numDocs);
             if (acceptDocs==null) return DocIdSetIterator.NO_MORE_DOCS;
-            
+
             if (acceptDocs == prevBits)
                 acceptDocs = newBits;
             else {
                 acceptDocs = newBits = new _NotBits (acceptDocs, 0);
                 prevBits = acceptDocs;
             }
-                
+
             return sub.score (collector, acceptDocs, min, max);
         }
 
@@ -144,13 +144,13 @@ public class MatchDeletedQuery extends Query {
         public long cost() {
             return sub.cost();
         }
-        
+
     }
-    
+
     protected static class _NotBits implements Bits {
         protected final Bits sub;
         protected final int len;
-        
+
         public _NotBits(Bits sub, int len) {
             this.sub = sub;
             this.len = len;

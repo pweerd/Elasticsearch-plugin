@@ -34,25 +34,25 @@ import nl.bitmanager.elasticsearch.transport.NodeBroadcastResponse;
 
 public class VersionRestAction extends BaseRestHandler {
 
-	public VersionRestAction(RestControllerWrapper c) {
-		c.registerHandler(GET, "/_bm/version", this);
-	}
+    public VersionRestAction(RestControllerWrapper c) {
+        c.registerHandler(GET, "/_bm/version", this);
+    }
 
-	@Override
-	public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
-	    final ActionDefinition def = ActionDefinition.INSTANCE;
-		final NodeBroadcastRequest broadcastRequest = new NodeBroadcastRequest(def, def.createTransportItem());
+    @Override
+    public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
+        final ActionDefinition def = ActionDefinition.INSTANCE;
+        final NodeBroadcastRequest broadcastRequest = new NodeBroadcastRequest(def, def.createTransportItem());
         return channel -> client.execute(
-               def.actionType, 
+               def.actionType,
                broadcastRequest,
                new RestToXContentListener<NodeBroadcastResponse>(channel)
         );
-	}
+    }
 
-	@Override
-	public boolean canTripCircuitBreaker() {
-		return false;
-	}
+    @Override
+    public boolean canTripCircuitBreaker() {
+        return false;
+    }
 
     @Override
     public String getName() {

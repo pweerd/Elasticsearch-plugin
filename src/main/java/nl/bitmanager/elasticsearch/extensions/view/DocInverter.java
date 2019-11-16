@@ -67,13 +67,13 @@ public class DocInverter {
     private final LeafReaderContext leafCtx;
     private final IndicesService indicesService;
     private final IndexShard indexShard;
-    
+
     public byte[] jsonBytes;
-    
+
     private String getTypeFromDoc(Document d, String defType) {
         String uid = d.get("_uid");
         if (uid==null) return defType;
-        
+
         int idx = uid.indexOf('#');
         if (idx <= 0) return defType;
         return uid.substring(0, idx);
@@ -93,7 +93,7 @@ public class DocInverter {
 
         this.docId = docid;
         selectedFields = new Selector (reqItem.fieldFilter, reqItem.fieldExpr);
-        selectedOutput = new Selector (reqItem.outputFilter, null); 
+        selectedOutput = new Selector (reqItem.outputFilter, null);
         outputLevel = reqItem.outputLevel;
 
         XContentBuilder json = JsonXContent.contentBuilder();
@@ -103,7 +103,7 @@ public class DocInverter {
         loadStoredFields(json, doc, fieldMappers);
         loadIndexedFields(json, doc, leafRdr, fieldMappers);
         json.endObject();
-        
+
         json.flush();
         jsonBytes = ((ByteArrayOutputStream)json.getOutputStream()).toByteArray();
     }
@@ -119,9 +119,9 @@ public class DocInverter {
             String s = f.stringValue();
             json.field("value", s);
             Number n = f.numericValue();
-            if (n != null) 
+            if (n != null)
                 json.field("value_num", n);
-            
+
             if (outputLevel > 0 || (s==null && n==null)) {
                 json.field("value_rdr", f.readerValue());
                 BytesRef binVal = f.binaryValue();
@@ -141,12 +141,12 @@ public class DocInverter {
         }
         json.endArray();
     }
-    
+
     public static FieldInfo[]  getFields (LeafReader leafRdr) {
         FieldInfos fieldInfos = leafRdr.getFieldInfos();
         int N = fieldInfos.size();
         FieldInfo[] ret = new FieldInfo[N];
-        
+
         int j=0;
         for (int i=0; i<N; i++) {
             ret[j] = fieldInfos.fieldInfo(i);
@@ -160,12 +160,12 @@ public class DocInverter {
         Arrays.sort(ret, fieldComparator);
         return ret;
     }
-    
+
     private static final Comparator<FieldInfo> fieldComparator = new  Comparator<FieldInfo>() {
         @Override
         public int compare(FieldInfo arg0, FieldInfo arg1) {
-            String name0 = arg0.name; 
-            String name1 = arg1.name; 
+            String name0 = arg0.name;
+            String name1 = arg1.name;
             if (name0.charAt(0)=='_') {
                 if (name1.charAt(0)!='_') return 1;
             } else {
@@ -176,7 +176,7 @@ public class DocInverter {
     };
 
 
-    
+
     private void loadIndexedFields(XContentBuilder json, Document d, LeafReader leafRdr, DocumentFieldMappers fieldMappers) throws Exception {
         if (!selectedOutput.isSelected("indexed") && !selectedOutput.isSelected ("docvalues")) return;
 
@@ -189,7 +189,7 @@ public class DocInverter {
         boolean inField=false;
         for (FieldInfo field: fieldInfos) {
             if (field==null || !selectedFields.isSelected (field.name.toLowerCase())) continue;
-            
+
             if (inField) {
                 json.endObject();
             }
@@ -220,7 +220,7 @@ public class DocInverter {
                 }
                 json.endArray();
             }
-            
+
             if (selectedOutput.isSelected ("docvalues")) {
                 json.startObject("docvalues");
                 extractDocValues (json, queryShardContext, field, fieldType, typeHandler);
@@ -256,7 +256,7 @@ public class DocInverter {
                     break;
             }
         }
-            
+
         AtomicFieldData dv = fd==null ? null : fd.load(leafCtx);
         if (this.outputLevel > 0) {
             json.field("ft_class", Utils.getClass(fieldType));
@@ -307,14 +307,14 @@ public class DocInverter {
             // Try find the doc...
             if (docId != dpe.advance(docId))
                 continue;
-            
+
             byte[] bytes =  Utils.getBytes(term, null);
             typeHandler.export(json, bytes);
-            if (outputLevel > 0) 
+            if (outputLevel > 0)
                 json.value ("BIN: "  + BytesHandler.instance.toString (bytes));
         }
     }
-    
+
     /**
      * This class enumerates all values in the BK_Tree and stores them in the
      * termlist
@@ -355,5 +355,5 @@ public class DocInverter {
 
     }
 
-    
+
 }

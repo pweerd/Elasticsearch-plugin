@@ -33,7 +33,7 @@ public class ShardResponse extends BroadcastShardResponse {
     public ShardResponse(ShardActionDefinitionBase definition, ShardId shardId, TransportItemBase item) {
         super(shardId);
         this.definition = definition;
-        this.transportItem = item; 
+        this.transportItem = item;
     }
 
     public ShardResponse(ShardActionDefinitionBase definition, StreamInput in) throws IOException {

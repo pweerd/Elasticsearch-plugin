@@ -40,9 +40,9 @@ import nl.bitmanager.elasticsearch.support.Utils;
 /**
  * Base class for shard requests supply some helper methods to make it easier to
  * stream content into a streamable
- * 
+ *
  * @author pweerd
- * 
+ *
  */
 public abstract class TransportItemBase implements ToXContent {
     protected final ActionDefinition definition;
@@ -54,7 +54,7 @@ public abstract class TransportItemBase implements ToXContent {
     protected TransportItemBase (ActionDefinition definition, StreamInput in) throws IOException {
         this.definition = definition;
     }
-    
+
     @Override
     public String toString() {
         return String.format("%s, creationid=%s", Utils.getTrimmedClass(this), System.identityHashCode(this));
@@ -63,7 +63,7 @@ public abstract class TransportItemBase implements ToXContent {
     protected void writeTo(StreamOutput out) throws IOException
     {
     }
-    
+
     protected abstract void consolidateResponse(TransportItemBase other);
 
     public static String readStr(StreamInput in) throws IOException {

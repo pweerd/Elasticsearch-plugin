@@ -50,7 +50,7 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
     public static final String NAME = "bm_undup_by_parents";
     public static final Logger logger = LogManager.getLogger(NAME);
 
-    
+
     public final String[] parentPaths;
     public final int debug_lvl;
     public final boolean resilient;
@@ -59,7 +59,7 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
 
 
     private UndupByParentsAggregatorBuilder(String name, String path, boolean resilient, boolean cache_bitsets, boolean compensateNonExisting, int dbgLvl) {
-        super(name); 
+        super(name);
         this.resilient = resilient;
         this.cache_bitsets = cache_bitsets;
         if (path == null) {
@@ -73,14 +73,14 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         this.debug_lvl = dbgLvl;
     }
     private UndupByParentsAggregatorBuilder(UndupByParentsAggregatorBuilder other) {
-        super(other.name); 
+        super(other.name);
         this.resilient = other.resilient;
         this.cache_bitsets = other.cache_bitsets;
         this.parentPaths = Arrays.copyOf(other.parentPaths,  other.parentPaths.length);
         this.compensateNonExisting = other.compensateNonExisting;
         this.debug_lvl = other.debug_lvl;
     }
-    
+
     private String[] parsePath (String path) {
         String[] x = path.split("[,;]+");
         int j=0;
@@ -90,12 +90,12 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
             x[j] = x[i];
             j++;
         }
-        
+
         return (j < x.length) ? Arrays.copyOf (x, j) : x;
     }
-    
-    
-    
+
+
+
     /**
      * Read from a stream.
      */
@@ -110,7 +110,7 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         compensateNonExisting = in.readBoolean();
         debug_lvl = in.readVInt();
     }
-    
+
 
     @Override
     protected void doWriteTo(StreamOutput out) throws IOException {
@@ -123,19 +123,19 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         out.writeVInt(debug_lvl);
     }
 
-    
+
     public static AggregationSpec createAggregationSpec() {
         AggregationSpec x = new AggregationSpec(NAME, UndupByParentsAggregatorBuilder::new, UndupByParentsAggregatorBuilder::parse);
         return x.addResultReader(UndupByParentsInternal::new);
     }
-    
-    
+
+
     protected ParentValueSourceConfig[] resolveConfigs (SearchContext context) {
         final int levels = parentPaths.length;
         ParentValueSourceConfig[] configs = new ParentValueSourceConfig[levels];
         MapperService mapperService = context.mapperService();
         _ParentJoinGetter x = new _ParentJoinGetter(mapperService);
-        
+
         FieldMapper parentJoinFieldMapper = x.getJoinFieldMapper();
         for (int lvl=0; lvl < levels; lvl++) {
             String type = parentPaths[lvl];
@@ -143,14 +143,14 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
                 configs[lvl] = null;
                 continue;
             }
-            
-            if (parentJoinFieldMapper==null) 
+
+            if (parentJoinFieldMapper==null)
                 throw new RuntimeException ("Mapping has no join field.");
-            
+
             FieldMapper parentIdFieldMapper = (FieldMapper) x.getIdMapper(type, true);
-            if (parentIdFieldMapper==null) 
+            if (parentIdFieldMapper==null)
                 throw new RuntimeException ("Parent type [" + type + "] not found.");
-            
+
             configs[lvl] = new ParentValueSourceConfig (context, parentIdFieldMapper, x.getParentFilter());
         }
         return configs;
@@ -162,11 +162,11 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         String currentFieldName = null;
         int dbgLvl = 0;
         boolean resilient = false;
-        boolean cache = true; 
+        boolean cache = true;
         boolean compensateNonExisting = true;
         while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
             switch (token) {
-            case FIELD_NAME: 
+            case FIELD_NAME:
                 currentFieldName = parser.currentName();
                 continue;
             case VALUE_STRING:
@@ -205,11 +205,11 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
             throwParsingException (parser, aggregationName, "Unknown key for a %s. Field: [%s]", token, currentFieldName);
         }
 
-        if (parent_paths == null) 
+        if (parent_paths == null)
             throwParsingException (parser, aggregationName, "Missing [parent_paths] field");
         return new UndupByParentsAggregatorBuilder(aggregationName, parent_paths, resilient, cache, compensateNonExisting, dbgLvl);
     }
-    
+
     private static void throwParsingException (XContentParser parser, String name, String msg) {
         msg = String.format("Aggregation [%s]: %s", name, msg);
         throw new ParsingException(parser.getTokenLocation(), msg);
@@ -245,7 +245,7 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         builder.endObject();
         return builder;
     }
-    
+
     public static String parentPathsAsString (String[] parentPaths) {
         StringBuilder sb = new StringBuilder();
         for (int i=0; i<parentPaths.length; i++) {
@@ -276,27 +276,27 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         return Arrays.deepEquals(parentPaths, other.parentPaths);
     }
 
-    
+
     /** Helper class to get info from the join mapper
-     *  The join mapper lives in a module and is not normally accessible by us :-( 
+     *  The join mapper lives in a module and is not normally accessible by us :-(
      */
     static class _ParentJoinGetter implements PrivilegedAction<Object> {
         public final MapperService service;
         public final MappedFieldType joinFieldType;
         public FieldMapper parentJoinFieldMapper;
         public FieldMapper parentIdFieldMapper;
-        
+
         private volatile Throwable error;
         private String cmd;
         private String type;
         private boolean isParent;
-        
+
         public _ParentJoinGetter (MapperService service) {
             SpecialPermission.check();
             this.service = service;
             this.joinFieldType = service.fullName("_parent_join");
         }
-        
+
         public Query getParentFilter () {
             cmd = "get_parent_filter";
             return (Query) doRequest();
@@ -314,7 +314,7 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
         private Object doRequest () {
             this.error = null;
             Object ret = AccessController.doPrivileged (this);
-            if (error != null) 
+            if (error != null)
                 throw new RuntimeException (error.toString() + "\nIs the correct plugin-security.policy in place?", error);
             return ret;
         }
@@ -343,11 +343,11 @@ public class UndupByParentsAggregatorBuilder extends AbstractAggregationBuilder<
                 return m.invoke(parentIdFieldMapper);
             }
 
-            
+
             throw new RuntimeException ("Unexpected cmd=[" + cmd + "]");
         }
-        
-        
+
+
         @Override
         public Object run() {
             try {

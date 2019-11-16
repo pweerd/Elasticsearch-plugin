@@ -28,20 +28,20 @@ import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 public class ActionDefinition extends NodeActionDefinitionBase {
 
-	public static final ActionDefinition INSTANCE;
+    public static final ActionDefinition INSTANCE;
 
-	static {
-		INSTANCE = new ActionDefinition();
-	}
+    static {
+        INSTANCE = new ActionDefinition();
+    }
 
-	private ActionDefinition() {
-		super (TransportAction.class, "cluster:admin:version", false);
-	}
+    private ActionDefinition() {
+        super (TransportAction.class, "cluster:admin:version", false);
+    }
 
-	@Override
-	public TransportItemBase createTransportItem() {
-		return new VersionTransportItem(this);
-	}
+    @Override
+    public TransportItemBase createTransportItem() {
+        return new VersionTransportItem(this);
+    }
 
     @Override
     public TransportItemBase createTransportItem(StreamInput in) throws IOException {

@@ -36,7 +36,7 @@ public class IDHandler extends SafeTypeHandler {
 
     @Override
     protected Object[] _bytesToObjects(byte[] bytes) {
-        return new Object[] {_toString(bytes)}; 
+        return new Object[] {_toString(bytes)};
     }
 
     @Override
@@ -46,7 +46,7 @@ public class IDHandler extends SafeTypeHandler {
         int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {
-            for (int i = 0; i < N; i++) 
+            for (int i = 0; i < N; i++)
                 ret[i] = dvs.nextValue().utf8ToString();
         }
         return ret;

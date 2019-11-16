@@ -30,19 +30,19 @@ import org.elasticsearch.rest.RestRequest;
 public class RestControllerWrapper  {
     private final RestController _controller;
     private final ArrayList<String> items;
-    
+
     public RestControllerWrapper (RestController wrapped) {
         this._controller = wrapped;
         items = new ArrayList<String> (8);
     }
-    
+
     public void registerHandler(RestRequest.Method method, String path, RestHandler handler) {
         _controller.registerHandler(method, path, handler);
         items.add (String.format("%s (%s)", path, method.toString().toLowerCase()));
     }
-    
+
     public List<String> items() {return items;}
-    
+
     @Override
     public String toString() {
         Collections.sort(items);

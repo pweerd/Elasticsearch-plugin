@@ -26,9 +26,9 @@ public class BoundedSimilaritySettings {
     public final float maxTf;
     public final float biasTf;
     public final int  forceTf;
-    
+
     public final boolean discountOverlaps;
-    
+
     public BoundedSimilaritySettings (Settings settings) {
         maxIdf = settings.getAsFloat("max_idf", 0.0f);
         maxTf = settings.getAsFloat("max_tf", 0.2f);

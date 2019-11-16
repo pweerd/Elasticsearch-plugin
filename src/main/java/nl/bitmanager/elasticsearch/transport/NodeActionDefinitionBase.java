@@ -28,7 +28,7 @@ import org.elasticsearch.plugins.ActionPlugin.ActionHandler;
 public abstract class NodeActionDefinitionBase extends ActionDefinition {
     public final ActionType<NodeBroadcastResponse> actionType;
     public final ActionHandler<NodeBroadcastRequest, NodeBroadcastResponse> handler;
- 
+
     /**
      * Name must start with one of: [cluster:admin, indices:data/read, indices:monitor, indices:data/write, internal:, indices:internal, cluster:monitor, cluster:internal, indices:admin]
      */

@@ -43,7 +43,7 @@ public abstract class TypeHandler {
     public XContentBuilder export(XContentBuilder builder, String field, byte[] bytes) throws IOException {
         return export (builder.field(field), bytes);
     }
-    
+
     public abstract byte[] toBytes(String s);
 
     public abstract String toString(byte[] b);
@@ -67,7 +67,7 @@ public abstract class TypeHandler {
         }
         return ret;
     }
-    
+
     public static byte[] toByteArray(BytesRef br) {
         byte[] bytes = br.bytes;
         return (br.offset==0 && br.length == bytes.length) ? br.bytes : Arrays.copyOfRange(bytes, br.offset, br.offset+br.length);
@@ -89,33 +89,33 @@ public abstract class TypeHandler {
         map.put("_type", new StringHandler("_type"));
         map.put("_uid", new StringHandler("_uid"));
         map.put("_field_names", new StringHandler("_field_names"));
-        
+
         map.put("bool", new BoolHandler("bool"));
         map.put("boolean", new BoolHandler("boolean"));
-        
+
         map.put("long", new Int64Handler("long"));
         map.put("_seq_no", new Int64Handler("_seq_no"));
         map.put("_version", new Int64Handler("_version"));
-        
+
         map.put("integer", new Int32Handler("integer"));
         map.put("short", new Int32Handler("short"));
         map.put("byte", new Int32Handler("byte"));
-        
+
         map.put("float", new Float32Handler("float"));
         map.put("double", new Float64Handler("double"));
-        
+
         map.put("geo_point", new GeoPointHandler("geo_point"));
-        
+
         map.put("date", new DateHandler("date"));
-        
+
         map.put("_id", new IDHandler("_id"));
         map.put("_source", new StringHandler("_source"));
         map.put("_primary_term", new Int64Handler("_primary_term"));
-        
+
 
         _types = map;
     }
-    
+
 
 
 }

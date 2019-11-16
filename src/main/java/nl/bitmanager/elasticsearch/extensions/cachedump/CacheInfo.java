@@ -32,7 +32,7 @@ import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
-/** 
+/**
  * Holds raw cache information out of data usage in an Elasticsearch cache
  */
 public class CacheInfo {
@@ -50,7 +50,7 @@ public class CacheInfo {
         this.query = query;
         this.ramBytesUsed = bytesUsed;
     }
-    
+
     public CacheInfo(StreamInput in) throws IOException {
         this.query = TransportItemBase.readStr (in);
         this.ramBytesUsed = in.readVLong();

@@ -133,7 +133,7 @@ public class TermlistTransportItem extends TransportItemBase {
         range = other.range;
         initCachedObjects();
     }
-    
+
     public TermlistTransportItem(ActionDefinition definition, StreamInput in) throws IOException {
         super(definition, in);
         fields = readStr(in);
@@ -212,7 +212,7 @@ public class TermlistTransportItem extends TransportItemBase {
     public IntRange getCountRange() {
         return count_range==null ? null : new IntRange(count_range);
     }
-    
+
     public int getMode() {
         return mode;
     }
@@ -315,7 +315,7 @@ public class TermlistTransportItem extends TransportItemBase {
         builder.field(P_COLLISIONS_ONLY, collisionsOnly);
         builder.field(P_SORT, sortType.toString());
     }
-    
+
     public void processShard (IndexShard indexShard) throws Exception {
         Searcher searcher = indexShard.acquireSearcher("termlist");
         searcher.getIndexReader().getContext().leaves();
@@ -334,7 +334,7 @@ public class TermlistTransportItem extends TransportItemBase {
     }
 
     private void extractTerms(LeafReader rdr, IndexShard indexShard) throws Exception {
-        
+
         FieldInfos fieldInfos = rdr.getFieldInfos();
         //Fields luceneFields = MultiFields.getFields(rdr);
         if (fieldInfos == null || fieldInfos.size() == 0)
@@ -374,7 +374,7 @@ public class TermlistTransportItem extends TransportItemBase {
 
                 TermsEnum termsEnum = terms.iterator();
                 BytesRef text;
-                
+
                 IntRange lengthRange = new IntRange(length_range);
                 boolean needText = lengthRange != null || notPattern != null || pattern != null;
                 while ((text = termsEnum.next()) != null) {
@@ -384,14 +384,14 @@ public class TermlistTransportItem extends TransportItemBase {
                         owned = true;
                         bytes = Arrays.copyOfRange(bytes, text.offset, text.length);
                     }
-                    
+
                     if (range != null && !range.isInRange(bytes))
                         continue;
-                    
+
                     if (needText) {
                         String term = text.utf8ToString();
                         if (lengthRange != null && !lengthRange.isInRange (term.length())) continue;
-                        
+
                         if (notPattern != null && notPattern.matcher(term).find())
                             continue;
                         if (pattern != null && !pattern.matcher(term).find())

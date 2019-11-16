@@ -52,7 +52,7 @@ public class FetchDiagnostics implements FetchSubPhase {
     public void hitExecute(SearchContext context, HitContext hitContext) {
         try {
             if (DEBUG) System.out.println("HIT execute1");
-            
+
             SearchParms x = (SearchParms)context.getSearchExt("_bm");
             if (x==null || !x.diagnostics) return;
             if (context.storedFieldsContext() != null && context.storedFieldsContext().fetchFields() == false) {
@@ -74,28 +74,28 @@ public class FetchDiagnostics implements FetchSubPhase {
             map.put("docid_rel",  rel_docid);
             map.put("index_uuid",  context.getQueryShardContext().index().getUUID());
             fields.put("_bm", new DocumentField("_bm", Collections.singletonList(map)));
-            
+
             DocumentMapper docMapper = context.mapperService().documentMapper(hitContext.hit().getType());
             DocumentFieldMappers mappers = docMapper.mappers();
-            
+
             QueryShardContext shardCtx = context.getQueryShardContext();
             LinkedHashMap<String, Object> dst = new LinkedHashMap<String, Object>();
             for (Mapper mapper: mappers) {
                 if (!(mapper instanceof FieldMapper)) continue;
                 FieldMapper f = (FieldMapper)mapper;
-                
+
                 if (DEBUG) System.out.println("HIT execute2 F=" + f.name() + ", dv=" + f.fieldType().hasDocValues());
-                if (f.fieldType().hasDocValues()) 
+                if (f.fieldType().hasDocValues())
                     extractDocValues  (dst, f, shardCtx, hitContext);
             }
             if (dst.size()>0) map.put("docvalues", dst);
         } catch (Exception e) {
             throw new RuntimeException (e.getMessage(), e);
         }
-        
-        
+
+
     }
-    
+
     private void extractDocValues(Map<String, Object> dst, FieldMapper field, QueryShardContext shardCtx, HitContext hitContext) throws IOException {
         IndexFieldData<?> fd;
         MappedFieldType fieldType = field.fieldType();
@@ -125,5 +125,5 @@ public class FetchDiagnostics implements FetchSubPhase {
         }
     }
 
-    
+
 }

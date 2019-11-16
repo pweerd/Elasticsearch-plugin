@@ -35,10 +35,10 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.elasticsearch.common.lucene.search.Queries;
 
 /** Sole purpose of this query is to make sure that we don't get automatically filtered by nested parents.
- *  So, the inner query is allowed to produce nested records, which is particularly handy 
+ *  So, the inner query is allowed to produce nested records, which is particularly handy
  *  when doing aggregations over nested records, while not caring about the hits anyway.
  *  WARNING: the hits are nested records, not the normal records.
- *  
+ *
  *  This object has TermQuery is a superclass, because that class is checked by ES to see if a query can
  *  produce nested records. If it is 'guaranteed' that a query cannot produce nested records, no automatic filtering is applied.
  */
@@ -74,8 +74,8 @@ public class MatchNestedQuery extends TermQuery {
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
         if (rewritten != null) return this;
-        
-        Query newWrapped; 
+
+        Query newWrapped;
         if (wrapped==null)
             newWrapped = Queries.newNestedFilter().rewrite(reader);
         else {
@@ -90,7 +90,7 @@ public class MatchNestedQuery extends TermQuery {
     /** Returns true iff <code>o</code> is equal to this. */
     @Override
     public boolean equals(Object other) {
-        return sameClassAs(other) && 
+        return sameClassAs(other) &&
                 Objects.equals(wrapped, ((MatchNestedQuery)other).wrapped) &&
                 Objects.equals(rewritten, ((MatchNestedQuery)other).rewritten);
     }

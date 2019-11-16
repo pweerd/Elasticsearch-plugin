@@ -54,15 +54,15 @@ public class BytesHandler extends TypeHandlerBase {
     public String toString(byte[] bytes) {
         return static_toString(bytes);
     }
-    
-    
-    
+
+
+
     static Object[] static_bytesToObjects(byte[] bytes) {
         Object[] ret = new Object[1];
         ret[0] = static_toString(bytes);
-        return ret; 
+        return ret;
     }
- 
+
     static Object[]  static_docValuesToObjects(AtomicFieldData fieldData, int docid) {
         try {
             SortedBinaryDocValues bdv = fieldData.getBytesValues();

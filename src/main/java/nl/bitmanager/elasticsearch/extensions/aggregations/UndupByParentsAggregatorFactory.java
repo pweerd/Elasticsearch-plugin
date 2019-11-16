@@ -39,10 +39,10 @@ public class UndupByParentsAggregatorFactory extends AggregatorFactory {
     public final boolean compensateNonExisting;
 
 
-    public UndupByParentsAggregatorFactory(UndupByParentsAggregatorBuilder bldr, 
-            ParentValueSourceConfig valuesSourceConfigs[], 
-            SearchContext context, 
-            AggregatorFactory parent, 
+    public UndupByParentsAggregatorFactory(UndupByParentsAggregatorBuilder bldr,
+            ParentValueSourceConfig valuesSourceConfigs[],
+            SearchContext context,
+            AggregatorFactory parent,
             Builder subFactoriesBuilder,
             Map<String, Object> metaData) throws IOException {
         super(bldr.getName(), context, parent, subFactoriesBuilder, metaData);
@@ -54,13 +54,13 @@ public class UndupByParentsAggregatorFactory extends AggregatorFactory {
         if (debug_lvl > 0) System.out.printf("Created %s[name=%s parent_paths=%s]\n", getClass().getSimpleName(), name, UndupByParentsAggregatorBuilder.parentPathsAsString(parentPaths));
     }
 
-    
+
     @Override
-    public Aggregator createInternal(Aggregator parent, 
+    public Aggregator createInternal(Aggregator parent,
             boolean collectsFromSingleBucket,
-            List<PipelineAggregator> pipelineAggregators, 
+            List<PipelineAggregator> pipelineAggregators,
             Map<String, Object> metaData) throws IOException {
-        
+
         WithOrdinals valuesSources[] = null;
         if (valuesSourceConfigs!=null) {
             QueryShardContext shardCtx = context.getQueryShardContext();
@@ -75,8 +75,8 @@ public class UndupByParentsAggregatorFactory extends AggregatorFactory {
                 }
             }
         }
-        
-        
+
+
         if (debug_lvl > 0) System.out.printf("-- Create aggregation from factory\n");
         return new UndupByParentsAggregator(this, name, context, parent, pipelineAggregators, metaData, valuesSources);
     }

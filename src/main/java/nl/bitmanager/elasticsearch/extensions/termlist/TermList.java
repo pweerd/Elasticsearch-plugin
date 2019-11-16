@@ -46,7 +46,7 @@ public class TermList extends TreeMap<byte[], TermElt> {
     private BytesRef rawBytes;
     private HashMap<String, FieldInfoItem> fields;
     private String es_type;
-    
+
     public TermList(SortType sort) {
         super((sort.order == (SortType.SORT_REVERSE | SortType.SORT_TERM))  ? BytesHelper.bytesComparer : BytesHelper.bytesComparerRev);
         fields = new HashMap<String, FieldInfoItem>();

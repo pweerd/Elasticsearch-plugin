@@ -48,14 +48,14 @@ public class FieldInfoItem {
         builder.field("indexOptions", indexOptions);
         builder.field("docValuesOptions", docValuesOptions);
         builder.field("es_type", es_type);
-        
+
         builder.field("doc_count", stats.docCount);
         builder.field("term_count", stats.termCount);
-        
+
         TypeHandler typeHandler = TypeHandler.create(es_type);
         builder.field("term_lo", typeHandler.toString(stats.min));
         builder.field("term_hi", typeHandler.toString(stats.max));
-        
+
         builder.endObject();
     }
 
@@ -74,11 +74,11 @@ public class FieldInfoItem {
     }
     private String docValuesAsString(FieldInfo info, MappedFieldType mft) {
         if (!mft.hasDocValues()) return "NONE";
-        
+
         DocValuesType dvt = mft.docValuesType();
         if (dvt != DocValuesType.NONE) return dvt.toString();
         //PW7 if (TextFieldWithDocvaluesMapper.CONTENT_TYPE.equals(mft.typeName())) return DocValuesType.SORTED_SET.toString();
-            
+
         if ("text".equals(mft.typeName())) {
             try {
                 mft.fielddataBuilder(index);

@@ -26,9 +26,9 @@ import java.lang.reflect.Type;
 /**
  * Helper class that offers services to get all public properties and format
  * them into a string value.
- * 
+ *
  * @author pweerd
- * 
+ *
  */
 public class ReflectionHelper {
     private String sep;
@@ -37,7 +37,7 @@ public class ReflectionHelper {
 
     /**
      * Creates a ReflectionHelper with a specific custom parameters
-     * 
+     *
      * @param sep
      *            the separator to be used when joining the public properties
      * @param skipEmpty
@@ -54,7 +54,7 @@ public class ReflectionHelper {
     /**
      * Creates a ReflectionHelper with a specific custom parameters. There are
      * no excluded properties.
-     * 
+     *
      * @param sep
      *            the separator to be used when joining the public properties
      * @param skipEmpty
@@ -77,7 +77,7 @@ public class ReflectionHelper {
     /**
      * set the exludes. If a property is found in the exclude array, the
      * property is not emitted in the result.
-     * 
+     *
      * @param excludes
      *            a String of excludes, separated by a ',' a ';' or a '|'.
      */
@@ -90,7 +90,7 @@ public class ReflectionHelper {
     /**
      * set the exludes. If a property is found in the exclude array, the
      * property is not emitted in the result.
-     * 
+     *
      * @param excludes
      *            an array of property names to be excluded from the result.
      */
@@ -102,7 +102,7 @@ public class ReflectionHelper {
      * Builds a String by emitting all public properties of the object as
      * key-value pairs. The result will be encapsulated in a &lt;classname&gt;[.....]
      * construction
-     * 
+     *
      * @param obj
      *            the object to be inspected
      */
@@ -116,7 +116,7 @@ public class ReflectionHelper {
      * Appends all public properties of the object as key-value pairs to the
      * StringBuilder. The result will be encapsulated in a &lt;classname&gt;[.....]
      * construction
-     * 
+     *
      * @param bldr
      *            the {@link StringBuilder} to append to.
      * @param obj
@@ -139,7 +139,7 @@ public class ReflectionHelper {
         }
         return false;
     }
-    
+
     public void writeStart (StringBuilder bldr, Object obj) {
         Class<?> cls = obj.getClass();
         bldr.append(cls.getSimpleName());
@@ -158,7 +158,7 @@ public class ReflectionHelper {
     /**
      * Appends all public properties of the object as key-value pairs to the
      * StringBuilder.
-     * 
+     *
      * @param bldr
      *            the {@link StringBuilder} to append to.
      * @param obj
@@ -174,7 +174,7 @@ public class ReflectionHelper {
             bldr.append(decodeCrLf(obj.toString()) + " [" + cls.getName() + "]");
             return;
         }
-        
+
         Method[] methods = cls.getMethods();
         // LogWrapper._debug ("Class {0} has {1} methods...", cls.getName(),
         // methods.length);
@@ -210,13 +210,13 @@ public class ReflectionHelper {
         }
         //writeFields (bldr, lvl, cls, obj);
     }
-    
+
     private static boolean isSimple (Object obj) {
         if (obj==null) return true;
         //String name = obj.getClass().getName();
         return false;
     }
-    
+
     private static void newLineAndIndent (StringBuilder sb, int lvl) {
         sb.append("\r\n");
         for (int i=0; i<lvl; i++) {
@@ -227,7 +227,7 @@ public class ReflectionHelper {
     /**
      * Appends all fields of the object as key-value pairs to the
      * StringBuilder.
-     * 
+     *
      * @param bldr
      *            the {@link StringBuilder} to append to.
      * @param obj
@@ -248,7 +248,7 @@ public class ReflectionHelper {
             if (isExcluded(fieldName))
                 continue;
             field.setAccessible(true);
-            
+
             newLineAndIndent (bldr, lvl);
             bldr.append(fieldName);
             bldr.append("=");

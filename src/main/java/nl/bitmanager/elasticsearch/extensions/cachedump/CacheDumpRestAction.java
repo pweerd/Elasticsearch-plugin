@@ -45,9 +45,9 @@ public class CacheDumpRestAction extends BaseRestHandler {
    public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
        final ActionDefinition def = ActionDefinition.INSTANCE;
        final NodeBroadcastRequest broadcastReq = new NodeBroadcastRequest(def, new CacheDumpTransportItem(def, request));
-       
+
        return channel -> client.execute(
-               def.actionType, 
+               def.actionType,
                broadcastReq,
                new RestToXContentListener<NodeBroadcastResponse>(channel)
         );

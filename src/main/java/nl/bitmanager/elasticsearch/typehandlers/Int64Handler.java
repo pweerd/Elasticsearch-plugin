@@ -41,7 +41,7 @@ public class Int64Handler extends SafeTypeHandler {
         Object[] ret = new Object[bytes.length / 8];
         for (int i=0; i<ret.length; i++)
             ret[i] = NumericUtils.sortableBytesToLong(bytes, i*8);
-        return ret; 
+        return ret;
     }
 
     @Override
@@ -52,7 +52,7 @@ public class Int64Handler extends SafeTypeHandler {
         int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {
-            for (int i = 0; i < N; i++) 
+            for (int i = 0; i < N; i++)
                 ret[i] = dvs.nextValue();
         }
         return ret;

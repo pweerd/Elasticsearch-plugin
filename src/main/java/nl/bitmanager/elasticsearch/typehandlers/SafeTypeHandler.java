@@ -36,7 +36,7 @@ public abstract class SafeTypeHandler extends TypeHandlerBase {
             return BytesHandler.instance.export (builder, bytes);
         }
     }
-    
+
     @Override
     public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         try {

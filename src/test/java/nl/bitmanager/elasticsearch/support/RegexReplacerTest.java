@@ -27,10 +27,10 @@ public class RegexReplacerTest {
 
     @Test
     public void test() {
-        check ("a/b", "a", "b");        
-        check ("a/", "a", "");        
-        check ("a///", "a/", "");        
-        check ("a///b//", "a/", "b/");        
+        check ("a/b", "a", "b");
+        check ("a/", "a", "");
+        check ("a///", "a/", "");
+        check ("a///b//", "a/", "b/");
     }
 
     private void check (String expr, String exprVal, String replVal) {

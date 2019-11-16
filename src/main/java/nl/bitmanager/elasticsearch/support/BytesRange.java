@@ -22,59 +22,59 @@ package nl.bitmanager.elasticsearch.support;
 import nl.bitmanager.elasticsearch.typehandlers.TypeHandler;
 
 public class BytesRange {
-    private final static byte[] MIN_VALUE; 
+    private final static byte[] MIN_VALUE;
     private final static byte[] MAX_VALUE;
     private final String range;
-    
-	public final byte[] low;
-	public final byte[] high;
+
+    public final byte[] low;
+    public final byte[] high;
     private final boolean includingRight;
-	
-	public BytesRange (String x, TypeHandler th) {
-		this (x, th, MIN_VALUE, MAX_VALUE);
-	}
-	public BytesRange (String x, TypeHandler th, byte[] defLo) {
-		this (x, th, defLo, MAX_VALUE);
-	}
-	public BytesRange (String x, TypeHandler th, byte[] defLo, byte[] defHi) {
-	    byte[] low = defLo;
-	    byte[] high = defHi;
-		
-		String left = "";
-		String right = "";
-		if (x != null && x.length() > 0) {
-			int ix = x.indexOf("..");
-			if (ix < 0) {
-				left = x; right=x;
-				} else {
-					left = x.substring(0,  ix);
-					right = x.substring(ix+2);
-				}
-		}
-		left = left.trim();
-		right = right.trim();
-		if (left.length() > 0)
-			low = th.toBytes(left);
-		if (right.length() > 0) 
-			high = th.toBytes(right);
-		
-		this.low = low;
-		this.high = high;
-		this.range = x;
-		this.includingRight = left.length()>0 && left.equals(right);
-	}
-	
-	@Override
-	public String toString() {
-		return range;
-	}
-	
+
+    public BytesRange (String x, TypeHandler th) {
+        this (x, th, MIN_VALUE, MAX_VALUE);
+    }
+    public BytesRange (String x, TypeHandler th, byte[] defLo) {
+        this (x, th, defLo, MAX_VALUE);
+    }
+    public BytesRange (String x, TypeHandler th, byte[] defLo, byte[] defHi) {
+        byte[] low = defLo;
+        byte[] high = defHi;
+
+        String left = "";
+        String right = "";
+        if (x != null && x.length() > 0) {
+            int ix = x.indexOf("..");
+            if (ix < 0) {
+                left = x; right=x;
+                } else {
+                    left = x.substring(0,  ix);
+                    right = x.substring(ix+2);
+                }
+        }
+        left = left.trim();
+        right = right.trim();
+        if (left.length() > 0)
+            low = th.toBytes(left);
+        if (right.length() > 0)
+            high = th.toBytes(right);
+
+        this.low = low;
+        this.high = high;
+        this.range = x;
+        this.includingRight = left.length()>0 && left.equals(right);
+    }
+
+    @Override
+    public String toString() {
+        return range;
+    }
+
     public boolean isInRange (byte[] x) {
         if (BytesHelper.bytesComparer.compare(low, x) > 0) return false;
         int rc = BytesHelper.bytesComparer.compare(x, high);
         return includingRight ? (rc <= 0) : (rc<0);
     }
-	
+
     static {
         MIN_VALUE = new byte[0];
         byte[] hv = new byte[256];

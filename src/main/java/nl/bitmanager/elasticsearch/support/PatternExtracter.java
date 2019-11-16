@@ -25,10 +25,10 @@ import java.util.regex.Matcher;
 
 public class PatternExtracter {
     final _Extracter[] parts;
-    
+
     public PatternExtracter (String expr) {
         List<_Extracter> list = new ArrayList<_Extracter>();
-        
+
         int prev = 0;
         int i;
         int N = expr==null ? 0 : expr.length();
@@ -41,7 +41,7 @@ public class PatternExtracter {
                 ++i;
                 continue;
             }
-            
+
             int ch = expr.charAt(i+1) - '0';
             if (ch < 0 || ch > 9) continue;
             list.add (new _GroupExtracter (ch));
@@ -49,40 +49,40 @@ public class PatternExtracter {
             ++i;
         }
         if (prev < N) list.add (new _ConstExtracter (expr, prev, N));
-        
+
         N = list.size();
         parts = N==0 ? null : list.toArray(new _Extracter[N]);
     }
-    
+
     public String extract (Matcher m) {
         int N = parts.length;
         if (N==0) return "";
-        
+
         StringBuilder sb = new StringBuilder();
         for (int i=0; i<N; i++)
             parts[i].append(sb,  m);
         return sb.toString();
     }
-    
-    
+
+
     static abstract class _Extracter {
         abstract void append (StringBuilder sb, Matcher m);
     }
-    
+
     static class _ConstExtracter extends _Extracter {
         private final String value;
         _ConstExtracter (String value, int start, int end) {
             this.value = (start >= end) ? "" : value.substring(start, end);
         }
-        
+
         @Override
         void append (StringBuilder sb, Matcher m) {
             sb.append(value);
         }
-        
+
         @Override
         public String toString() {
-            return String.format("const[%s]", value);  
+            return String.format("const[%s]", value);
         }
     }
 
@@ -91,15 +91,15 @@ public class PatternExtracter {
         _GroupExtracter (int group) {
             this.group = group;
         }
-        
+
         @Override
         void append (StringBuilder sb, Matcher m) {
             sb.append(m.group(group));
         }
-        
+
         @Override
         public String toString() {
-            return String.format("grp[%d]", group);  
+            return String.format("grp[%d]", group);
         }
     }
 }

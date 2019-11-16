@@ -47,7 +47,7 @@ public class ShardBroadcastResponse extends BroadcastResponse implements ToXCont
         this.definition = definition;
         this.transportItem = item;
     }
-    
+
     public ShardBroadcastResponse(ShardActionDefinitionBase definition, StreamInput in) throws IOException {
         super(in);
         this.definition = definition;

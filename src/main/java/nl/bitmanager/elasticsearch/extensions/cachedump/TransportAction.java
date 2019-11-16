@@ -63,7 +63,7 @@ import nl.bitmanager.elasticsearch.transport.NodeTransportActionBase;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 public class TransportAction extends NodeTransportActionBase {
-    
+
    private final IndicesService indicesService;
 
 
@@ -74,7 +74,7 @@ public class TransportAction extends NodeTransportActionBase {
        super(ActionDefinition.INSTANCE, settings, threadPool, clusterService, transportService, actionFilters, indexNameExpressionResolver);
        this.indicesService = indicesService;
    }
-   
+
 
    @Override
    protected TransportItemBase handleNodeRequest(NodeRequest request) throws Exception {
@@ -88,11 +88,11 @@ public class TransportAction extends NodeTransportActionBase {
        }
        Throwable th = (Throwable)AccessController.doPrivileged (worker);
        if (th != null) item.errorMsg = th.toString() + "\nIs the correct plugin-security.policy in place?";;
-       
+
        return item;
    }
 
-   
+
 
     static class _PrivilegeHelper {
        public static Object getField(Object obj, String fld) throws Exception {
@@ -102,7 +102,7 @@ public class TransportAction extends NodeTransportActionBase {
            while (c != null) {
                for (Field f : c.getDeclaredFields()) {
                    if (!fld.equals(f.getName())) continue;
-                   
+
                    f.setAccessible(true);
                    return f.get(obj);
                }
@@ -111,12 +111,12 @@ public class TransportAction extends NodeTransportActionBase {
            return null;
        }
    }
-   
+
    static class _CacheGetter extends _PrivilegeHelper implements PrivilegedAction<Object> {
        Object lruCache;
        ShardCoreKeyMap shardKeyMap;
        Map<Object,Object> luceneInternalCache;
-       
+
        final IndicesService indicesService;
        final CacheDumpTransportItem req;
        Throwable error;
@@ -156,13 +156,13 @@ public class TransportAction extends NodeTransportActionBase {
             for (Object key: lruCache.keys()) {
                 Object v = lruCache.get(key);
                 if (v==null) continue;
-                
+
                 long bytes = (v instanceof BytesReference) ? ((BytesReference)v).ramBytesUsed() : 0;
                 String q = parseKey((BytesReference) getField(key, "value"));
                 if (dumpRaw) indexSet.add(q);
-                
+
                 String index;
-                if (indexReplacer==null) 
+                if (indexReplacer==null)
                     index = "_ALL";
                 else {
                     index = indexReplacer.extract(q);
@@ -174,15 +174,15 @@ public class TransportAction extends NodeTransportActionBase {
                         q = q.substring(idx);
                     }
                 }
-                    
+
                 CacheInfo cacheInfo = new CacheInfo (q, bytes);
-                
+
                 Map<String, CacheInfo> statsPerQuery = indexCacheMap.get(index);
                 if (statsPerQuery == null) {
                     statsPerQuery = new HashMap<String, CacheInfo>();
                     indexCacheMap.put(index, statsPerQuery);
                 }
-                
+
                 CacheInfo existing = statsPerQuery.get(q);
                 if (existing != null) {
                     existing.combine(cacheInfo);
@@ -192,11 +192,11 @@ public class TransportAction extends NodeTransportActionBase {
             }
             req.setCacheInfo(indexSet, indexCacheMap, null);
         }
-        
+
         private String parseKey (BytesReference key) throws IOException {
             StreamInput strm = key.streamInput();
 
-            StringBuilder sb = new StringBuilder(); 
+            StringBuilder sb = new StringBuilder();
             sb.append(strm.readString());
             boolean emitSpace = false;
             while(true) {
@@ -212,10 +212,10 @@ public class TransportAction extends NodeTransportActionBase {
                 }
                 sb.append ((char)b);
             }
-            return sb.toString();            
+            return sb.toString();
         }
-        
-        
+
+
 
         @SuppressWarnings("unchecked")
         private void processQueryCache() throws Exception {
@@ -277,13 +277,13 @@ public class TransportAction extends NodeTransportActionBase {
                 BitsetFilterCache bitsetCache = indexService.cache().bitsetFilterCache();
                 String name = indexService.index().getName();
                 indexSet.add(name);
-                
+
                 Cache<IndexReader.CacheKey, Cache<Query, Value>> loadedFilters = (Cache<CacheKey, Cache<Query, Value>>) getField(bitsetCache, "loadedFilters");
                 for (Cache<Query, Value> cc: loadedFilters.values()) {
                     for (Query key: cc.keys()) {
                         Value value = cc.get(key);
                         if (value == null) continue;
-                        
+
                         BitSet bitset = (BitSet) getField (value, "bitset");
                         CacheInfo info = new CacheInfo(key, bitset);
 
@@ -292,7 +292,7 @@ public class TransportAction extends NodeTransportActionBase {
                             statsPerQuery = new HashMap<String, CacheInfo>();
                             indexCacheMap.put(name, statsPerQuery);
                         }
-                        
+
                         CacheInfo existing = statsPerQuery.get(info.query);
                         if (existing != null) {
                             existing.combine(info);

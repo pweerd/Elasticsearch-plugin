@@ -73,7 +73,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
 //        List<org.elasticsearch.common.xcontent.NamedXContentRegistry.Entry> list = m.getNamedXContents();
 //        for (org.elasticsearch.common.xcontent.NamedXContentRegistry.Entry x: list) {
 //            logger.info("-- " + x.name + ", cat=" + x.categoryClass.getName() + ", tos=" + x);
-//            
+//
 //        }
 //
 //    }
@@ -170,7 +170,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     public Map<String, MetadataFieldMapper.TypeParser> getMetadataMappers() {
         return Collections.emptyMap();
     }
-    
+
     @Override
     public List<QuerySpec<?>> getQueries() {
         List<QuerySpec<?>> ret = new ArrayList<QuerySpec<?>>(1);
@@ -180,7 +180,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         logRegistered (ret, "queries", (QuerySpec<?> qs)->qs.getName().getPreferredName());
         return ret;
     }
-    
+
     @Override
     public List<FetchSubPhase> getFetchSubPhases(FetchPhaseConstructionContext context) {
         List<FetchSubPhase> ret = new ArrayList<FetchSubPhase>(1);
@@ -188,7 +188,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         logRegistered (ret, "fetch-phases", (FetchSubPhase k)->k.getClass().getSimpleName());
         return ret;
     }
-    
+
     @Override
     public List<SearchExtSpec<?>> getSearchExts() {
         List<SearchExtSpec<?>> ret = new ArrayList<SearchExtSpec<?>>(1);
@@ -198,7 +198,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
     }
 
 
-    
+
     @Override
     public List<AggregationSpec> getAggregations() {
         List<AggregationSpec> ret = new ArrayList<AggregationSpec>(1);
@@ -218,7 +218,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         sb.append(' ');
         sb.append(what);
         sb.append(": ");
-        
+
         for (T1 t: list) {
             if (first) first = false; else sb.append("; ");
             sb.append(dlg.apply(t));

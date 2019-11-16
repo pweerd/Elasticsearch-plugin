@@ -40,17 +40,17 @@ public class IndexCacheInfo {
     private final Map<String, Map<String, CacheInfo>> indexCacheInfo;
     private final Set<String> indexSet;
     private String errorMsg;
-    
+
     public IndexCacheInfo() {
         indexCacheInfo = new HashMap<String, Map<String, CacheInfo>>();
         indexSet = new HashSet<String>();
     }
-    
+
     public IndexCacheInfo(StreamInput in) throws IOException {
         int N = in.readInt();
         indexSet = new HashSet<String>(N);
         for (int i=0; i<N; i++) indexSet.add(in.readString());
-        
+
         N = in.readInt();
         Map <String, Map<String, CacheInfo>> indexCacheMap = new TreeMap <String, Map<String, CacheInfo>> ();
         for (int i=0; i<N; i++) {
@@ -65,16 +65,16 @@ public class IndexCacheInfo {
         }
         indexCacheInfo = indexCacheMap;
     }
-    
+
     public void writeTo (StreamOutput out) throws IOException {
         int N = indexSet.size();
         out.writeInt(N);
         for (String x: indexSet) writeStr (out, x);
-        
+
         N = indexCacheInfo.size();
         out.writeInt(N);
         for (Entry<String, Map<String, CacheInfo>> kvp1: indexCacheInfo.entrySet()) {
-            writeStr(out, kvp1.getKey()); 
+            writeStr(out, kvp1.getKey());
             Map<String, CacheInfo> statsPerQuery = kvp1.getValue();
             int M = statsPerQuery==null ? 0 : statsPerQuery.size();
             out.writeInt(M);
@@ -85,8 +85,8 @@ public class IndexCacheInfo {
             }
         }
     }
-    
-    
+
+
     public XContentBuilder toXContent(XContentBuilder builder, String name, SortType sort, boolean dumpRaw) throws IOException {
         if (errorMsg != null) {
             return builder.field(name, errorMsg);
@@ -112,7 +112,7 @@ public class IndexCacheInfo {
             builder.endObject();
         }
         builder.endArray();
-        
+
         if (dumpRaw) {
             builder.startArray(name + "_raw_keys");
             for (String x: indexSet) {
@@ -123,12 +123,12 @@ public class IndexCacheInfo {
         return builder;
     }
 
-    
-    
+
+
     public void addIndex (String index) {
         indexSet.add(index);
     }
-    
+
     public Map<String, CacheInfo> getStatsPerKeyForIndex (String index) {
         Map<String, CacheInfo> statsPerKey = indexCacheInfo.get(index);
         if (statsPerKey == null) {
@@ -138,9 +138,9 @@ public class IndexCacheInfo {
         return statsPerKey;
     }
 
-    
-    
-    
+
+
+
     public static void writeStr(StreamOutput out, String x) throws IOException {
         out.writeString(x==null ? "" : x);
     }

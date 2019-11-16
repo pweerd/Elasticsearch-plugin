@@ -35,34 +35,33 @@ import nl.bitmanager.elasticsearch.extensions.Plugin;
 import nl.bitmanager.elasticsearch.transport.NodeRequest;
 import nl.bitmanager.elasticsearch.transport.NodeTransportActionBase;
 import nl.bitmanager.elasticsearch.transport.TransportItemBase;
-//ActionType<Response extends ActionResponse>
 public class TransportAction extends NodeTransportActionBase {
 
-	@Inject
-	public TransportAction(Settings settings, ThreadPool threadPool, ClusterService clusterService,
-			TransportService transportService, ActionFilters actionFilters,
-			IndexNameExpressionResolver indexNameExpressionResolver) {
-		super(ActionDefinition.INSTANCE, settings, threadPool, clusterService, transportService, actionFilters,
-				indexNameExpressionResolver);
-	}
+    @Inject
+    public TransportAction(Settings settings, ThreadPool threadPool, ClusterService clusterService,
+            TransportService transportService, ActionFilters actionFilters,
+            IndexNameExpressionResolver indexNameExpressionResolver) {
+        super(ActionDefinition.INSTANCE, settings, threadPool, clusterService, transportService, actionFilters,
+                indexNameExpressionResolver);
+    }
 
-	@Override
-	protected TransportItemBase handleNodeRequest(NodeRequest request) throws Exception {
-		VersionTransportItem ret = new VersionTransportItem(ActionDefinition.INSTANCE);
-		if (debug)
-			System.out.println("VersionTransportAction:handleNodeRequest");
-		ret.addNodeVersion(clusterService.localNode().toString(), Plugin.version, getLocation());
-		return ret;
-	}
+    @Override
+    protected TransportItemBase handleNodeRequest(NodeRequest request) throws Exception {
+        VersionTransportItem ret = new VersionTransportItem(ActionDefinition.INSTANCE);
+        if (debug)
+            System.out.println("VersionTransportAction:handleNodeRequest");
+        ret.addNodeVersion(clusterService.localNode().toString(), Plugin.version, getLocation());
+        return ret;
+    }
 
-	private URL getLocation() {
-		ProtectionDomain pd = getClass().getProtectionDomain();
-		if (pd == null)
-			return null;
-		CodeSource cs = pd.getCodeSource();
-		if (cs == null)
-			return null;
-		return cs.getLocation();
-	}
+    private URL getLocation() {
+        ProtectionDomain pd = getClass().getProtectionDomain();
+        if (pd == null)
+            return null;
+        CodeSource cs = pd.getCodeSource();
+        if (cs == null)
+            return null;
+        return cs.getLocation();
+    }
 
 }

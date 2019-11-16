@@ -45,10 +45,10 @@ public abstract class NodeTransportActionBase
     protected NodeTransportActionBase(NodeActionDefinitionBase definition, Settings settings, ThreadPool threadPool,
             ClusterService clusterService, TransportService transportService, ActionFilters actionFilters,
             IndexNameExpressionResolver indexNameExpressionResolver) {
-        super(definition.name, 
-                threadPool, 
-                clusterService, 
-                transportService, 
+        super(definition.name,
+                threadPool,
+                clusterService,
+                transportService,
                 actionFilters,
                 (in)->definition.createBroadcastRequest(in),
                 (in)->definition.createNodeRequest(in),
@@ -65,7 +65,7 @@ public abstract class NodeTransportActionBase
             System.out.printf("[%s]: newNodeRequest()\n", definition.id);
         return new NodeRequest(request);
     }
-    
+
     @Override
     protected NodeResponse newNodeResponse (StreamInput in) throws IOException {
         if (debug)

@@ -37,7 +37,7 @@ public class BoolHandler extends TypeHandlerBase {
         Object[] ret = new Object[bytes.length];
         for (int i=0; i<bytes.length; i++)
             ret[i] = bytes[i]==(byte)'T';
-        return ret; 
+        return ret;
     }
 
     @Override
@@ -48,7 +48,7 @@ public class BoolHandler extends TypeHandlerBase {
         int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {
-            for (int i = 0; i < N; i++) 
+            for (int i = 0; i < N; i++)
                 ret[i] = (0 != dvs.nextValue());
         }
         return ret;

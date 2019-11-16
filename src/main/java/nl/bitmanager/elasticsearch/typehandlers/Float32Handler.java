@@ -33,7 +33,7 @@ public class Float32Handler extends Float64Handler {
         Object[] ret = new Object[bytes.length / 4];
         for (int i=0; i<ret.length; i++)
             ret[i] = NumericUtils.sortableIntToFloat(NumericUtils.sortableBytesToInt(bytes, i*4));
-        return ret; 
+        return ret;
     }
 
     @Override

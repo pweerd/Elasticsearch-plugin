@@ -47,18 +47,18 @@ public class PatternExtracterTest {
 
     private void check (String expr, String ... expected) {
         PatternExtracter pe = new PatternExtracter(expr);
-        
+
         int N = pe.parts.length;
         System.out.printf ("%s --> %d parts\n", expr, N);
         for (int i=0; i<N; i++) {
             System.out.printf ("[%02d]: %s\n", i, pe.parts[i]);
         }
-        
+
         for (int i=0; i<N; i++) {
             assertTrue (i<expected.length);
             assertEquals (expected[i], pe.parts[i].toString());
         }
         assertEquals (N, expected.length);
-        
+
     }
 }

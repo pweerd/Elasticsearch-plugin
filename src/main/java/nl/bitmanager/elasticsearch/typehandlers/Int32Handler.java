@@ -32,7 +32,7 @@ public class Int32Handler extends Int64Handler {
         Object[] ret = new Object[bytes.length / 4];
         for (int i=0; i<ret.length; i++)
             ret[i] = NumericUtils.sortableBytesToInt(bytes, i*4);
-        return ret; 
+        return ret;
     }
 
     @Override

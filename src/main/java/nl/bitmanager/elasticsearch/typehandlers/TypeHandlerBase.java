@@ -36,8 +36,8 @@ public abstract class TypeHandlerBase extends TypeHandler {
         Object[] values = _bytesToObjects(bytes);
         return (values.length==1) ? builder.value(values[0]) : builder.value(values);
     }
-    
-    
+
+
     @Override
     public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         return _docValuesToObjects (fieldData, docid);
@@ -58,6 +58,6 @@ public abstract class TypeHandlerBase extends TypeHandler {
         }
         return sb.toString();
     }
-    
+
 
 }

@@ -37,11 +37,11 @@ public class BoundedSimilarity extends Similarity {
         this.settings = settings;
     }
 
-    
+
     public static Similarity create (Settings settings, Version version, ScriptService scriptService) {
         return new BoundedSimilarity(new BoundedSimilaritySettings(settings));
     }
-    
+
     @Override
     public long computeNorm(FieldInvertState state) {
         return settings.discountOverlaps ? state.getLength() - state.getNumOverlap() : state.getLength();
@@ -52,7 +52,7 @@ public class BoundedSimilarity extends Similarity {
         final Explanation idfExplain;
         final float idf;
         final float totalScore;
-        
+
         if (settings.maxIdf == 0) {
            idf = 1.0f;
            idfExplain = boost==1.0f ? null : Explanation.match(boost,  String.format (Locale.ROOT, "boost=%.3f", boost));

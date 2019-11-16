@@ -26,7 +26,7 @@ public class Selector {
    private HashSet<String> selectedSet;
    private Pattern selectedExpr;
    private boolean inversedSet, inversedExpr;
-   
+
    public Selector (String selectedValues, String expr) {
        if (selectedValues != null && selectedValues.length()>0) {
            if (selectedValues.charAt(0) == '!' || selectedValues.charAt(0) == '-') {
@@ -36,7 +36,7 @@ public class Selector {
            if (selectedValues != null)
                selectedSet = createSet (selectedValues);
        }
-       
+
        if (expr != null && expr.length()>0) {
            if (expr.charAt(0) == '!' || expr.charAt(0) == '-') {
                inversedExpr = true;
@@ -48,7 +48,7 @@ public class Selector {
        System.out.println("SEL: " + selectedValues + ", expr=" + expr);
        System.out.println("set=" + selectedSet + ", expr=" + selectedExpr);
    }
-   
+
    private static HashSet<String> createSet (String x) {
        if (x==null || x.length()==0) return null;
        HashSet<String> ret = new HashSet<String>();
@@ -59,7 +59,7 @@ public class Selector {
        }
        return ret;
    }
-   
+
    private boolean isSelectedBySet (String v) {
        boolean ret;
        ret = (selectedSet == null) ? true : selectedSet.contains(v);
@@ -72,7 +72,7 @@ public class Selector {
    }
    public boolean isSelected (String v) {
        if (v==null) return false;
-       
+
        if (!isSelectedBySet(v)) return false;
        return isSelectedByExpr (v);
    }

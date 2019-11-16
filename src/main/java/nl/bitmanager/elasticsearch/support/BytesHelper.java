@@ -41,7 +41,7 @@ public class BytesHelper {
             return arg0.length - arg1.length;
         }
     };
-    
+
     public static Comparator<byte[]> bytesComparerRev = new Comparator<byte[]>() {
         @Override
         public int compare(byte[] arg1, byte[] arg0) {

@@ -89,24 +89,24 @@ public class Utils {
             return "NULL";
         return obj.getClass().getSimpleName();
     }
-    
+
     public static void dump (String what, Object obj) {
         System.out.printf ("-- %s=%s, type=%s\n", what, obj, getType(obj));
     }
-    
+
     public static void dumpObj (String what, Object obj) {
         dump (what,obj);
         if (obj==null) return;
-        
+
         Class<? extends Object> c = obj.getClass();
-        
+
         for (Field f: c.getDeclaredFields()) {
             System.out.println ("-- -- Field: " + f);
         }
         for (Method m: c.getDeclaredMethods()) {
             System.out.println ("-- -- Method: " + m);
         }
-        
+
         Class<? extends Object> p=c;
         while (true) {
             p = p.getSuperclass();
@@ -114,7 +114,7 @@ public class Utils {
             System.out.println ("-- -- Super: " + p.getName());
         }
     }
-    
+
     public static Map<String,String> getManifestEntries() throws IOException {
         HashMap<String, String> map = new HashMap<String, String>();
         Enumeration<java.net.URL> resources = Utils.class.getClassLoader().getResources("META-INF/MANIFEST.MF");
@@ -134,15 +134,15 @@ public class Utils {
         return map;
 
     }
-    
+
     /** Return the classname, optionallywithout  without 'nl.bitmanager.elasticsearch.' */
     public static String getTrimmedClass (Object obj) {
-    	if (obj==null) return "NULL";
-    	
-    	String ret = obj.getClass().getName();
-    	return ret.startsWith("nl.bitmanager.elasticsearch.") ? ret.substring(28) : ret;
+        if (obj==null) return "NULL";
+
+        String ret = obj.getClass().getName();
+        return ret.startsWith("nl.bitmanager.elasticsearch.") ? ret.substring(28) : ret;
     }
-    
+
     /**
      * Create a clone in the bytes from the parameter, or return empty if the bytes were null or []
      */
@@ -169,7 +169,7 @@ public class Utils {
             return empty;
         return Arrays.copyOf(b, b.length);
     }
-    
+
     /**
      * Convert an object to a String, or return null if the object was null
      */
@@ -183,7 +183,7 @@ public class Utils {
     public static String toString(Object obj) {
         return obj==null ? null : obj.toString();
     }
-    
+
     public static String getClass (Object obj) {
         if (obj==null) return "null";
         return obj.getClass().getName();

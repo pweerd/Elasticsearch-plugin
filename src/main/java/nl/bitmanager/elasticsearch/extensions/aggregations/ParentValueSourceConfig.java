@@ -34,7 +34,7 @@ public class ParentValueSourceConfig extends ValuesSourceConfig<WithOrdinals> {
 
     public ParentValueSourceConfig(SearchContext context, FieldMapper fm, Query parentFilter) {
         super(ValuesSourceType.BYTES);
-        
+
         this.parentFilter = parentFilter;
         MappedFieldType ft = fm.fieldType();
         final SortedSetDVOrdinalsIndexFieldData fieldData = context.getForField(ft);

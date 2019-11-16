@@ -60,7 +60,7 @@ public class DateHandler extends Int64Handler {
     }
     static final DateTimeFormatter dateParser;
     static {
-        DateTimeParser[] parsers = { 
+        DateTimeParser[] parsers = {
                 DateTimeFormat.forPattern( "yyyy-MM-dd HH:mm:ss" ).getParser(),
                 DateTimeFormat.forPattern( "yyyy-MM-dd" ).getParser() };
         dateParser = new DateTimeFormatterBuilder().append( null, parsers ).toFormatter();

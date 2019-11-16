@@ -36,10 +36,10 @@ import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
  */
 public class UndupByParentsInternal extends InternalNumericMetricsAggregation.SingleValue implements UndupByParents {
     private final long count;
-    
+
     public UndupByParentsInternal(String name, long count, List<PipelineAggregator> pipelineAggregators,
             Map<String, Object> metaData) {
-        
+
         super(name, pipelineAggregators, metaData);
         this.count = count;
     }
@@ -87,7 +87,7 @@ public class UndupByParentsInternal extends InternalNumericMetricsAggregation.Si
         builder.field(CommonFields.DOC_COUNT.getPreferredName(), count);
         return builder;
     }
-    
+
     @Override
     public int hashCode() {
         return Objects.hash(super.hashCode(), count);

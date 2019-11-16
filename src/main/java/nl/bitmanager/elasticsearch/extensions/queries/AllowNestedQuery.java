@@ -30,10 +30,10 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 
 /** Sole purpose of this query is to make sure that we don't get automatically filtered by nested parents.
- *  So, the inner query is allowed to produce nested records, which is particularly handy 
+ *  So, the inner query is allowed to produce nested records, which is particularly handy
  *  when doing aggregations over nested records, while not caring about the hits anyway.
  *  WARNING: the hits are nested records, not the normal records.
- *  
+ *
  *  This object has TermQuery is a superclass, because that class is checked by ES to see if a query can
  *  produce nested records. If it is 'guaranteed' that a query cannot produce nested records, no automatic filtering is applied.
  */
@@ -60,7 +60,7 @@ public class AllowNestedQuery extends TermQuery {
       sb.append(')');
       return sb.toString();
     }
-    
+
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
         Query qw = wrapped.rewrite(reader);

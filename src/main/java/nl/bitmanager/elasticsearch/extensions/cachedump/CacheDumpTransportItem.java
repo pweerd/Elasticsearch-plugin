@@ -64,11 +64,11 @@ public class CacheDumpTransportItem extends TransportItemBase {
             definition.logger.info("Params=" + req.params().toString());
         }
         indexExpr = req.param("index_expr");
-        
+
         String sortType = req.param("sort", "size").toLowerCase();
-        if (sortType==null || sortType.equals("size")) 
+        if (sortType==null || sortType.equals("size"))
             sort = SortType.Size;
-        else if (sortType.equals("query")) 
+        else if (sortType.equals("query"))
             sort = SortType.Query;
         else throw new RuntimeException ("Unsupported value for sort: [" + sortType + "]. Valid: query, size.");
 
@@ -87,7 +87,7 @@ public class CacheDumpTransportItem extends TransportItemBase {
 
         if ("null".equals(indexExpr) || (indexExpr != null && indexExpr.length()==0)) indexExpr = null;
     }
-    
+
     public CacheDumpTransportItem(NodeRequest req, String initError) {
         this(req.definition);
         CacheDumpTransportItem other = (CacheDumpTransportItem)req.getTransportItem();
@@ -97,7 +97,7 @@ public class CacheDumpTransportItem extends TransportItemBase {
         errorMsg  = initError;
         cacheType = other.cacheType;
     }
-    
+
     public CacheDumpTransportItem(ActionDefinition definition, StreamInput in) throws IOException {
         super(definition);
         cacheType = CacheType.values()[in.readByte()];
@@ -138,7 +138,7 @@ public class CacheDumpTransportItem extends TransportItemBase {
         out.writeInt(N);
         if (N > 0) {
             for (Entry<String, Map<String, CacheInfo>> kvp1: indexCacheMap.entrySet()) {
-                writeStr(out, kvp1.getKey()); 
+                writeStr(out, kvp1.getKey());
                 Map<String, CacheInfo> statsPerQuery = kvp1.getValue();
                 int M = statsPerQuery==null ? 0 : statsPerQuery.size();
                 out.writeInt(M);
@@ -154,7 +154,7 @@ public class CacheDumpTransportItem extends TransportItemBase {
 
     public RegexReplace getIndexReplacer() {
         if (indexExpr==null)  return null;
-        if (replacer==null) 
+        if (replacer==null)
             replacer = new RegexReplace(indexExpr);
         return replacer;
     }
@@ -164,13 +164,13 @@ public class CacheDumpTransportItem extends TransportItemBase {
         this.indexCacheMap = indexCacheMap;
         this.errorMsg = errorMsg;
     }
-    
-    
+
+
     @Override
     public String toString () {
         return String.format("%s: expr=%s, sortq=%s, type=%s, creationid=%s", Utils.getTrimmedClass(this), this.indexExpr, this.sort, cacheType, System.identityHashCode(this));
     }
-    
+
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         if (errorMsg != null && errorMsg.length()>0)
             builder.field("error", errorMsg);
@@ -214,15 +214,15 @@ public class CacheDumpTransportItem extends TransportItemBase {
         builder.endArray();
         return builder;
     }
-    
-    
+
+
     @Override
     protected void consolidateResponse(TransportItemBase _other) {
         CacheDumpTransportItem other = (CacheDumpTransportItem) _other;
         if (errorMsg == null || errorMsg.length()==0)
             this.errorMsg = other.errorMsg;
         cacheType = other.cacheType;
-        
+
         if (indexSet==null) {
             indexSet = other.indexSet;
         } else {
@@ -230,7 +230,7 @@ public class CacheDumpTransportItem extends TransportItemBase {
                 indexSet.addAll(other.indexSet);
             }
         }
-        
+
         if (indexCacheMap==null || indexCacheMap.size()==0) {
             this.indexCacheMap = other.indexCacheMap;
         } else {
@@ -238,13 +238,13 @@ public class CacheDumpTransportItem extends TransportItemBase {
                 indexCacheMap = new TreeMap<String, Map<String, CacheInfo>>();
             for (Entry<String, Map<String, CacheInfo>> kvp1: other.indexCacheMap.entrySet()) {
                 String index = kvp1.getKey();
-                
+
                 Map<String, CacheInfo> existing = indexCacheMap.get(index);
                 if (existing==null) {
                     indexCacheMap.put(index,  kvp1.getValue());
                     continue;
                 }
-                
+
                 for (Entry<String, CacheInfo> kvp2: kvp1.getValue().entrySet()) {
                     CacheInfo ci = kvp2.getValue();
                     CacheInfo existingCi = existing.get(ci.query);
@@ -256,5 +256,5 @@ public class CacheDumpTransportItem extends TransportItemBase {
             }
         }
     }
-    
+
 }

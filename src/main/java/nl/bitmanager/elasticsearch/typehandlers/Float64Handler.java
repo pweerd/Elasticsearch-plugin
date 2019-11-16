@@ -41,9 +41,9 @@ public class Float64Handler extends Int64Handler {
         Object[] ret = new Object[bytes.length / 8];
         for (int i=0; i<ret.length; i++)
             ret[i] = NumericUtils.sortableLongToDouble(NumericUtils.sortableBytesToLong(bytes, i*8));
-        return ret; 
+        return ret;
     }
-    
+
     @Override
     public Object[] docValuesToObjects(AtomicFieldData fieldData, int docid) throws IOException {
         AtomicNumericFieldData numData = (AtomicNumericFieldData) fieldData;
@@ -52,7 +52,7 @@ public class Float64Handler extends Int64Handler {
         int N = dvs.docValueCount();
         Object[] ret = new Object[N];
         if (N > 0) {
-            for (int i = 0; i < N; i++) 
+            for (int i = 0; i < N; i++)
                 ret[i] = dvs.nextValue();
         }
         return ret;

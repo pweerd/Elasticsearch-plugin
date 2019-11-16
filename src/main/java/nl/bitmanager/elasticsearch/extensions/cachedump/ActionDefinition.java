@@ -27,14 +27,14 @@ import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 public class ActionDefinition extends NodeActionDefinitionBase {
 
-	public static final ActionDefinition INSTANCE;
+    public static final ActionDefinition INSTANCE;
     static {
-		INSTANCE = new ActionDefinition();
+        INSTANCE = new ActionDefinition();
     }
 
-   private ActionDefinition() {
-      super(TransportAction.class, "cluster:admin:cache/dump", true);
-   }
+    private ActionDefinition() {
+        super(TransportAction.class, "cluster:admin:cache/dump", true);
+    }
 
     @Override
     public TransportItemBase createTransportItem() {

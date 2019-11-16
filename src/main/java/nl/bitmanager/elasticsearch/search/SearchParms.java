@@ -37,11 +37,11 @@ import org.elasticsearch.search.SearchExtBuilder;
 public class SearchParms extends SearchExtBuilder {
     public static final String WRITEABLENAME = "_bm";
     public static final String F_DIAGNOSTICS = "diagnostics";
-    
+
     public final boolean diagnostics;
 
     public SearchParms(StreamInput in) throws IOException {
-        diagnostics = in.readBoolean(); 
+        diagnostics = in.readBoolean();
     }
 
     public SearchParms(XContentParser parser) throws IOException {
@@ -50,7 +50,7 @@ public class SearchParms extends SearchExtBuilder {
         boolean diagnostics = true;
         while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
             switch (token) {
-            case FIELD_NAME: 
+            case FIELD_NAME:
                 fieldName = parser.currentName();
                 continue;
             case VALUE_BOOLEAN:
@@ -98,15 +98,15 @@ public class SearchParms extends SearchExtBuilder {
     }
 
     public static SearchExtSpec<SearchParms> createSpec() {
-        return new SearchExtSpec<SearchParms>(WRITEABLENAME, 
-                SearchParms::read, 
+        return new SearchExtSpec<SearchParms>(WRITEABLENAME,
+                SearchParms::read,
                 SearchParms::parse);
     }
-    
+
     private static SearchParms parse (XContentParser parser) throws IOException {
         return new SearchParms(parser);
     }
-    
+
     private static SearchParms read (StreamInput in) throws IOException {
         return new SearchParms(in);
     }
