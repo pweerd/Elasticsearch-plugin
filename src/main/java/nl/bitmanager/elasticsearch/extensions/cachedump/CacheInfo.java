@@ -43,8 +43,8 @@ public class CacheInfo {
         this.ramBytesUsed = docidSet.ramBytesUsed();
     }
     public CacheInfo (Query query, BitSet bitset) {
-        this.query = query.toString();
-        this.ramBytesUsed = (bitset.length() + 64) / 8;
+        this.query = query==null ? "null" : query.toString();
+        this.ramBytesUsed = bitset==null ? -1 : ((bitset.length() + 64) / 8);
     }
     public CacheInfo (String query, long bytesUsed) {
         this.query = query;
