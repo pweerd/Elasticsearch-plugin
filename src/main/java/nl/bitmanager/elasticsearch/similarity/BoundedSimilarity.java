@@ -51,12 +51,10 @@ public class BoundedSimilarity extends Similarity {
     public SimScorer scorer(float boost, CollectionStatistics collectionStats,  TermStatistics... termStats) {
         final Explanation idfExplain;
         final float idf;
-        final float totalScore;
 
         if (settings.maxIdf == 0) {
            idf = 1.0f;
-           idfExplain = boost==1.0f ? null : Explanation.match(boost,  String.format (Locale.ROOT, "boost=%.3f", boost));
-           totalScore = boost;
+           idfExplain = null;
         }
         else {
            long maxDocFreq=0;
@@ -68,8 +66,7 @@ public class BoundedSimilarity extends Similarity {
            long totalDocs = collectionStats.maxDoc();
            double max = Math.log(1.0 + (totalDocs - 0.5D) / (1.5D));
            idf = (float) (1.0 + settings.maxIdf * Math.log(1.0 + (totalDocs - maxDocFreq + 0.5D) / (maxDocFreq + 0.5D)) / max);
-           totalScore = idf * boost;
-           idfExplain = Explanation.match (totalScore, String.format (Locale.ROOT, "boost=%.3f, idf=%.3f (docs=%d out of %d, maxIdf=%.3f)", boost, idf, maxDocFreq, totalDocs, settings.maxIdf));
+           idfExplain = Explanation.match (idf, String.format (Locale.ROOT, "+= idf=%.3f (docs=%d out of %d, maxIdf=%.3f)", idf, maxDocFreq, totalDocs, settings.maxIdf));
         }
         return new BoundedScorer (this, idfExplain, boost, idf);
     }

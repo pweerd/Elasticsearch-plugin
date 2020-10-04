@@ -28,6 +28,7 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 public class BoundedScorer extends SimScorer {
     private final Explanation idfExplain;
+    private final Explanation boostExplain;
 
     private final float weight_idf;
     private final float weight_boost;
@@ -46,6 +47,7 @@ public class BoundedScorer extends SimScorer {
         forceTf = settings.forceTf;
         weight_idf = idf;
         weight_boost = boost;
+        boostExplain =  (boost==1.0f) ? null : Explanation.match(boost, String.format (Locale.ROOT, "*= boost=%.3f", boost));
     }
 
     public float scoreTf (int docLen, float freq) {
@@ -67,20 +69,26 @@ public class BoundedScorer extends SimScorer {
 
     @Override
     public float score(float freq, long norm) {
-        return (float)(weight_boost*(weight_idf + maxTf * score_tf(freq, norm)));
+        return (float)(weight_boost*(weight_idf + score_tf(freq, norm)));
     }
 
 
     @Override
     public Explanation explain(Explanation freq, long norm) {
-        float tfBoost = maxTf * score_tf((float)freq.getValue(), norm);
+        float tfBoost = score_tf((float)freq.getValue(), norm);
         float score = weight_boost*(weight_idf+tfBoost);
 
+        String msg = String.format (Locale.ROOT, "tfBoost (tf=%.1f, fieldlen=%d, maxTf=%.2f, forceTf=%.1f, bias=%.2f)", freq.getValue(), norm, maxTf, forceTf, biasTf);
+        Explanation tfExplain = Explanation.match (idfExplain==null ? tfBoost : tfBoost+weight_idf, msg);
+        
+        if (idfExplain==null && boostExplain==null) {
+            return tfExplain;
+        }
         List<Explanation> sub = new ArrayList<Explanation>();
-        String msg = String.format (Locale.ROOT, "tfBoost (tf=%.1f, fieldlen=%d, maxTf=%.2f, forceTf=%d, bias=%.2f)", freq.getValue(), norm, maxTf, forceTf, biasTf);
-        sub.add (idfExplain);
-        sub.add (Explanation.match (tfBoost, msg));
-        return Explanation.match (score, "", sub);
+        sub.add (tfExplain);
+        if (idfExplain != null) sub.add (idfExplain);
+        if (boostExplain != null) sub.add (boostExplain);
+        return Explanation.match (score, "Combined from:", sub);
     }
 
 
