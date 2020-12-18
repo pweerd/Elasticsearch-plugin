@@ -23,23 +23,21 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import org.apache.logging.log4j.LogManager;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.miscellaneous.DisableGraphAttribute;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 import org.elasticsearch.Version;
-import org.elasticsearch.common.logging.DeprecationLogger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.analysis.AbstractTokenFilterFactory;
-import org.elasticsearch.index.analysis.ShingleTokenFilterFactory;
 import org.elasticsearch.index.analysis.TokenFilterFactory;
 import org.elasticsearch.indices.analysis.AnalysisModule.AnalysisProvider;
 
@@ -190,6 +188,7 @@ public final class ShingleFilter extends TokenFilter {
     private final PositionLengthAttribute posLenAtt = addAttribute(
             PositionLengthAttribute.class);
     private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
+    private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
 
     /**
      * Constructs a ShingleFilter with the specified shingle size from the
@@ -373,9 +372,14 @@ public final class ShingleFilter extends TokenFilter {
             boolean isAllFiller = true;
             InputWindowToken nextToken = null;
             Iterator<InputWindowToken> iter = inputWindow.iterator();
-            for (int gramNum = 1; iter.hasNext()
-                    && builtGramSize < gramSize.getValue(); ++gramNum) {
+            for (int gramNum = 1; iter.hasNext() && builtGramSize < gramSize.getValue(); ++gramNum) {
                 nextToken = iter.next();
+                System.out.printf("-- -- Loop: gramNum=%d, built=%d, size=%d, token=%s\n", gramNum, builtGramSize, gramSize.getValue(), nextToken);
+                
+                if (gramNum > 1 && !nextToken.onlyDigitsAndChars) {
+                    gramSize.reset();
+                    return incrementToken();
+                }
                 if (builtGramSize < gramNum) {
                     if (builtGramSize > 0) {
                         gramBuilder.append(tokenSeparator);
@@ -392,12 +396,15 @@ public final class ShingleFilter extends TokenFilter {
                     isAllFiller = false;
                 }
             }
+            System.out.printf("-- X Loop: isAllFiller=%s, built=%d, size=%d\n", isAllFiller, builtGramSize, gramSize.getValue());
             if (!isAllFiller && builtGramSize == gramSize.getValue()) {
-                inputWindow.getFirst().attSource.copyTo(this);
-                posIncrAtt.setPositionIncrement(isOutputHere ? 0 : 1);
+                inputWindow.getFirst().copyTo(this);
+                if (isOutputHere) 
+                    posIncrAtt.setPositionIncrement(0);
                 termAtt.setEmpty().append(gramBuilder);
                 if (gramSize.getValue() > 1) {
                     typeAtt.setType(tokenType);
+                    keywordAtt.setKeyword(true);
                     noShingleOutput = false;
                 }
                 offsetAtt.setOffset(offsetAtt.startOffset(),
@@ -440,15 +447,13 @@ public final class ShingleFilter extends TokenFilter {
      * @throws IOException
      *             if the input stream has a problem
      */
-    private InputWindowToken getNextToken(InputWindowToken target)
-            throws IOException {
+    private InputWindowToken getNextToken(InputWindowToken target)  throws IOException {
         InputWindowToken newTarget = target;
         if (numFillerTokensToInsert > 0) {
             if (null == target) {
-                newTarget = new InputWindowToken(
-                        nextInputStreamToken.cloneAttributes());
+                newTarget = new InputWindowToken(nextInputStreamToken.cloneAttributes());
             } else {
-                nextInputStreamToken.copyTo(target.attSource);
+                target.copyFrom(nextInputStreamToken);
             }
             // A filler token occupies no space
             newTarget.offsetAtt.setOffset(newTarget.offsetAtt.startOffset(),
@@ -458,10 +463,9 @@ public final class ShingleFilter extends TokenFilter {
             --numFillerTokensToInsert;
         } else if (isNextInputStreamToken) {
             if (null == target) {
-                newTarget = new InputWindowToken(
-                        nextInputStreamToken.cloneAttributes());
+                newTarget = new InputWindowToken(nextInputStreamToken.cloneAttributes());
             } else {
-                nextInputStreamToken.copyTo(target.attSource);
+                target.copyFrom(nextInputStreamToken);
             }
             isNextInputStreamToken = false;
             newTarget.isFiller = false;
@@ -470,7 +474,7 @@ public final class ShingleFilter extends TokenFilter {
                 if (null == target) {
                     newTarget = new InputWindowToken(cloneAttributes());
                 } else {
-                    this.copyTo(target.attSource);
+                    target.copyFrom(this);;
                 }
                 if (posIncrAtt.getPositionIncrement() > 1) {
                     // Each output shingle must contain at least one input
@@ -689,7 +693,7 @@ public final class ShingleFilter extends TokenFilter {
     }
 
     private static class InputWindowToken {
-        final AttributeSource attSource;
+        private final AttributeSource _attSource;
         final CharTermAttribute termAtt;
         final OffsetAttribute offsetAtt;
         final PositionIncrementAttribute posIncAtt;
@@ -697,16 +701,19 @@ public final class ShingleFilter extends TokenFilter {
         boolean isFiller = false;
 
         public InputWindowToken(AttributeSource attSource) {
-            this.attSource = attSource;
+            this._attSource = attSource;
             this.termAtt = attSource.getAttribute(CharTermAttribute.class);
             this.offsetAtt = attSource.getAttribute(OffsetAttribute.class);
             this.posIncAtt = attSource.getAttribute(PositionIncrementAttribute.class);
             this.onlyDigitsAndChars = isOnlyLetterOrDigit (termAtt.buffer(), termAtt.length());
         }
         
-        public void copyFrom ( AttributeSource src) {
-            src.copyTo(attSource);
+        public void copyFrom (AttributeSource src) {
+            src.copyTo(_attSource);
             onlyDigitsAndChars = isOnlyLetterOrDigit (termAtt.buffer(), termAtt.length());
+        }
+        public void copyTo (AttributeSource src) {
+            _attSource.copyTo(src);
         }
         
         private static boolean isOnlyLetterOrDigit (char[] b, int len) {
@@ -719,13 +726,15 @@ public final class ShingleFilter extends TokenFilter {
         
         
         public void dump() {
-            String term = termAtt.toString();
-            int posinc = posIncAtt.getPositionIncrement();
-            System.out.printf("-- term=%s, posinc=%d, filler=%s, onlyLetDig=%s\n", term, posinc, isFiller, onlyDigitsAndChars);
+            System.out.println("-- " + toString());
+        }
+        
+        public String toString() {
+            return String.format("term=%s, posinc=%d, filler=%s, onlyLetDig=%s", termAtt.toString(), posIncAtt.getPositionIncrement(), isFiller, onlyDigitsAndChars);
         }
     }
 
-    public static class Factory extends AbstractTokenFilterFactory {
+    public static class Factory extends AbstractMultiTermTokenFilterFactory {
         private final int maxShingleSize;
         private final boolean outputUnigrams;
         private final boolean outputUnigramsIfNoShingles;
@@ -733,9 +742,6 @@ public final class ShingleFilter extends TokenFilter {
         private final String tokenSeparator;
         private final String fillerToken;
         private final int minShingleSize;
-
-        // private static final DeprecationLogger DEPRECATION_LOGGER = new
-        // DeprecationLogger(LogManager.getLogger(ShingleTokenFilterFactory.class));
 
         public Factory(IndexSettings indexSettings, String name,
                 Settings settings) {
@@ -802,12 +808,6 @@ public final class ShingleFilter extends TokenFilter {
             return filter;
         }
 
-        @Override
-        public TokenFilterFactory getSynonymFilter() {
-            throw new IllegalArgumentException("Token filter [" + name()
-                    + "] cannot be used to parse synonyms");
-        }
-
         public int getMaxShingleSize() {
             return maxShingleSize;
         }
@@ -830,8 +830,7 @@ public final class ShingleFilter extends TokenFilter {
 
     }
 
-    public static class Provider
-            implements AnalysisProvider<TokenFilterFactory> {
+    public static class Provider implements AnalysisProvider<TokenFilterFactory> {
 
         @Override
         public TokenFilterFactory get(IndexSettings indexSettings,

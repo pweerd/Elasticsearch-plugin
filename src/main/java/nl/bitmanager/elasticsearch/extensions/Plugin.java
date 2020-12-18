@@ -41,8 +41,10 @@ import org.elasticsearch.common.settings.IndexScopedSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.index.IndexModule;
+import org.elasticsearch.index.analysis.TokenFilterFactory;
 import org.elasticsearch.index.mapper.Mapper;
 import org.elasticsearch.index.mapper.MetadataFieldMapper;
+import org.elasticsearch.indices.analysis.AnalysisModule;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.AnalysisPlugin;
 import org.elasticsearch.plugins.MapperPlugin;
@@ -119,12 +121,14 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         indexModule.addSimilarity("bounded_similarity", BoundedSimilarity::create);
     }
 
-  //PW7 @Override
-  //PW7 public Map<String, AnalysisProvider<TokenFilterFactory>> getTokenFilters() {
-  //PW7 logger.info("Register tokenFilters");
-  //PW7 logRegistered (TokenFilterProvider.allFilters.keySet(), "token filters");
-  //PW7 return TokenFilterProvider.allFilters;
-  //PW7 }
+    @Override
+    public Map<String, AnalysisModule.AnalysisProvider<TokenFilterFactory>> getTokenFilters() {
+        Map<String, AnalysisModule.AnalysisProvider<TokenFilterFactory>> ret = new HashMap<String, AnalysisModule.AnalysisProvider<TokenFilterFactory>>();
+        ret.put("bm_shingle", new nl.bitmanager.elasticsearch.analyses.ShingleFilter.Provider());
+        ret.put("bm_word_delimiter_graph", new nl.bitmanager.elasticsearch.analyses.WordDelimiterGraphTokenFilterFactory.Provider());
+        logRegistered (ret.keySet(), "token filters");
+        return ret;
+    }
 
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
