@@ -39,7 +39,7 @@ public class DateHandler extends Int64Handler {
 
     protected static Object[] convertToDate (Object[] arr) {
         for (int i=0; i<arr.length; i++)
-            arr[i] = new Instant((long)arr[i]);
+            arr[i] = new Instant((long)arr[i]).toString();
         return arr;
     }
     @Override
