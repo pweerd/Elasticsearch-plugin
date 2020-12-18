@@ -252,7 +252,8 @@ public class DocInverter {
                 default:  return;
                 case NUMERIC:
                 case SORTED_NUMERIC:
-                    fd = new SortedNumericDVIndexFieldData(queryShardContext.index(), field.name, typeHandler.numericType);
+                    if (typeHandler.numericType != null)
+                       fd = new SortedNumericDVIndexFieldData(queryShardContext.index(), field.name, typeHandler.numericType);
                     break;
             }
         }
