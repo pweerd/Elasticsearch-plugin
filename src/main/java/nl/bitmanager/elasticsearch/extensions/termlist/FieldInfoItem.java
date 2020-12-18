@@ -28,6 +28,7 @@ import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.mapper.MappedFieldType;
+import org.elasticsearch.search.DocValueFormat;
 
 import nl.bitmanager.elasticsearch.typehandlers.TypeHandler;
 
@@ -72,19 +73,22 @@ public class FieldInfoItem {
         }
         return indexOptions.toString();
     }
+    
     private String docValuesAsString(FieldInfo info, MappedFieldType mft) {
-        if (!mft.hasDocValues()) return "NONE";
-
         DocValuesType dvt = mft.docValuesType();
-        if (dvt != DocValuesType.NONE) return dvt.toString();
-        //PW7 if (TextFieldWithDocvaluesMapper.CONTENT_TYPE.equals(mft.typeName())) return DocValuesType.SORTED_SET.toString();
+        //System.out.printf ("docValuesAsString F=%s, T=%s, dvgen=%d, dvt=%s, hasdv=%s\n", info.name, mft.typeName(), info.getDocValuesGen(), dvt, mft.hasDocValues());
 
-        if ("text".equals(mft.typeName())) {
-            try {
-                mft.fielddataBuilder(index);
-                return "FIELDDATA";
-            } catch(Throwable th) {}
+        if (mft.hasDocValues()) {
+            if (dvt != DocValuesType.NONE) return dvt.toString();
+            
+            DocValueFormat dvFormat = mft.docValueFormat(null,  null); 
+            if (dvFormat != null) return dvFormat.getWriteableName();
         }
+
+        try {
+            mft.fielddataBuilder(index);
+            return "FIELDDATA";
+        } catch(Throwable th) {}
         return "NONE";
     }
 
