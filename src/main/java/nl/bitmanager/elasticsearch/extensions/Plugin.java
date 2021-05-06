@@ -55,6 +55,7 @@ import org.elasticsearch.search.fetch.FetchSubPhase;
 
 import nl.bitmanager.elasticsearch.extensions.aggregations.UndupByParentsAggregatorBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.AllowNestedQueryBuilder;
+import nl.bitmanager.elasticsearch.extensions.queries.FuzzyQueryBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchDeletedQueryBuilder;
 import nl.bitmanager.elasticsearch.extensions.queries.MatchNestedQueryBuilder;
 import nl.bitmanager.elasticsearch.search.FetchDiagnostics;
@@ -181,6 +182,7 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         ret.add (new QuerySpec<>(MatchDeletedQueryBuilder.NAME, MatchDeletedQueryBuilder::new, MatchDeletedQueryBuilder::fromXContent));
         ret.add (new QuerySpec<>(MatchNestedQueryBuilder.NAME, MatchNestedQueryBuilder::new, MatchNestedQueryBuilder::fromXContent));
         ret.add (new QuerySpec<>(AllowNestedQueryBuilder.NAME, AllowNestedQueryBuilder::new, AllowNestedQueryBuilder::fromXContent));
+        ret.add (new QuerySpec<>(FuzzyQueryBuilder.NAME, FuzzyQueryBuilder::new, FuzzyQueryBuilder::fromXContent));
         logRegistered (ret, "queries", (QuerySpec<?> qs)->qs.getName().getPreferredName());
         return ret;
     }
