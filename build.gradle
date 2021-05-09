@@ -37,9 +37,10 @@ jar.doFirst {
  }
 }
 
-repositories {
 
-     maven { url "http://repo.maven.apache.org/maven2" }
+
+repositories {
+    mavenCentral()
 }
 dependencies {
     compile group: 'org.elasticsearch', name: 'elasticsearch', version:'7.4.0'
