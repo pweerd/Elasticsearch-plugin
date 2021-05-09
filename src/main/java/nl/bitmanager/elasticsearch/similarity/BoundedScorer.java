@@ -76,10 +76,11 @@ public class BoundedScorer extends SimScorer {
     @Override
     public Explanation explain(Explanation freq, long norm) {
         float tfBoost = score_tf((float)freq.getValue(), norm);
-        float score = weight_boost*(weight_idf+tfBoost);
+        float rawScore = weight_idf+tfBoost;
+        float score = weight_boost*rawScore;
 
         String msg = String.format (Locale.ROOT, "tfBoost (tf=%.1f, fieldlen=%d, maxTf=%.2f, forceTf=%.1f, bias=%.2f)", freq.getValue(), norm, maxTf, forceTf, biasTf);
-        Explanation tfExplain = Explanation.match (idfExplain==null ? tfBoost : tfBoost+weight_idf, msg);
+        Explanation tfExplain = Explanation.match (idfExplain==null ? rawScore : tfBoost, msg);
         
         if (idfExplain==null && boostExplain==null) {
             return tfExplain;
