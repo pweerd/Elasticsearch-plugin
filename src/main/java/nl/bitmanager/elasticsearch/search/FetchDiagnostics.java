@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.Query;
 import org.elasticsearch.common.document.DocumentField;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
 import org.elasticsearch.index.fielddata.IndexFieldData;
@@ -73,6 +74,8 @@ public class FetchDiagnostics implements FetchSubPhase {
             map.put("docid",  docid);
             map.put("docid_rel",  rel_docid);
             map.put("index_uuid",  context.getQueryShardContext().index().getUUID());
+            Query query = context.query();
+            map.put("query", query==null ? null : query.toString());
             fields.put("_bm", new DocumentField("_bm", Collections.singletonList(map)));
 
             DocumentMapper docMapper = context.mapperService().documentMapper(hitContext.hit().getType());
