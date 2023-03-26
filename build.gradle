@@ -11,8 +11,7 @@ group = 'nl.bitmanager'
 version = '7.4.0'
 
 description = """bitmanager-elasticsearch-plugin"""
-project.ext { version2 = version }
-
+project.ext { version_ex = version + '.2023.0326' }
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -29,7 +28,7 @@ eclipse {
 jar.doFirst {
  manifest {
   attributes \
-   'build-version': project.version2, \
+   'build-version': project.version_ex, \
    'Implementation-Title': project.description, \
    'build-date': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"), \
    'git-commit': 'git rev-parse --short HEAD'.execute().text.trim(), \
