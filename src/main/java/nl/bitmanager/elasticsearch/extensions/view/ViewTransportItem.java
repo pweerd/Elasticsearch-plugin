@@ -47,12 +47,22 @@ import nl.bitmanager.elasticsearch.transport.TransportItemBase;
 
 public class ViewTransportItem extends TransportItemBase {
     public byte[] json;
-    public String type, id, fieldFilter, fieldExpr, outputFilter;
-    public int outputLevel;
-    public int docOffset;
+    public final String type, id, fieldFilter, fieldExpr, outputFilter;
+    public final int outputLevel;
+    public final int docOffset;
+    public final boolean postings, dense;
 
     public ViewTransportItem(ActionDefinition definition) {
         super(definition);
+        type = null;
+        id = null;
+        fieldFilter = null;
+        fieldExpr = null;
+        outputFilter = null;
+        outputLevel = 0;
+        docOffset = 0;
+        postings = false;
+        dense = false;
     }
 
     public ViewTransportItem(ActionDefinition definition, RestRequest req) {
@@ -64,6 +74,8 @@ public class ViewTransportItem extends TransportItemBase {
         outputFilter = req.param("output");
         outputLevel = req.paramAsInt("output_lvl",  0);
         docOffset = req.paramAsInt("offset",  0);
+        postings = req.paramAsBoolean("postings", false);
+        dense = req.paramAsBoolean("dense", false);
     }
 
     public ViewTransportItem(ViewTransportItem other) {
@@ -75,6 +87,8 @@ public class ViewTransportItem extends TransportItemBase {
         outputFilter = other.outputFilter;
         outputLevel = other.outputLevel;
         docOffset = other.docOffset;
+        postings = other.postings;
+        dense = other.dense;
     }
 
 
@@ -88,6 +102,8 @@ public class ViewTransportItem extends TransportItemBase {
         outputLevel = in.readInt();
         docOffset = in.readInt();
         json = readByteArray(in);
+        postings = in.readBoolean();
+        dense = in.readBoolean();
     }
 
     @Override
@@ -101,6 +117,8 @@ public class ViewTransportItem extends TransportItemBase {
         out.writeInt(outputLevel);
         out.writeInt(docOffset);
         writeByteArray(out, json);
+        out.writeBoolean(postings);
+        out.writeBoolean(dense);
     }
     @Override
     protected void consolidateResponse(TransportItemBase _other) {
@@ -116,6 +134,8 @@ public class ViewTransportItem extends TransportItemBase {
         builder.field("field_expr", fieldExpr);
         builder.field("output", outputFilter);
         builder.field("output_lvl", outputLevel);
+        builder.field("postings", postings);
+        builder.field("dense", dense);
         builder.field("offset", docOffset);
         builder.endObject();
         if (json==null || json.length==0) return builder;

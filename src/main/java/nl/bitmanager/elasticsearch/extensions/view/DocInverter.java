@@ -58,8 +58,9 @@ import nl.bitmanager.elasticsearch.typehandlers.TypeHandler;
 
 public class DocInverter {
     Selector selectedFields, selectedOutput;
-    private int docId;
-    private int outputLevel;
+    private final int docId;
+    private final int outputLevel;
+    private final boolean postings, dense;
     private final LeafReader leafRdr;
     private final LeafReaderContext leafCtx;
     private final IndicesService indicesService;
@@ -89,6 +90,8 @@ public class DocInverter {
         }
 
         this.docId = docid;
+        this.postings = reqItem.postings;
+        this.dense = reqItem.dense;
         selectedFields = new Selector (reqItem.fieldFilter, reqItem.fieldExpr);
         selectedOutput = new Selector (reqItem.outputFilter, null);
         outputLevel = reqItem.outputLevel;
@@ -298,7 +301,15 @@ public class DocInverter {
             if (term == null)
                 break;
 
-            PostingsEnum dpe = leafRdr.postings(new Term(fieldInfo.name, term));
+            int what = PostingsEnum.FREQS;
+            if (postings) {
+                switch (fieldInfo.getIndexOptions()) {
+                    case DOCS_AND_FREQS: break;
+                    case DOCS_AND_FREQS_AND_POSITIONS: what |= PostingsEnum.POSITIONS; break;
+                    case DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS: what |= (PostingsEnum.POSITIONS | PostingsEnum.OFFSETS); break;
+                }
+            }
+            PostingsEnum dpe = leafRdr.postings(new Term(fieldInfo.name, term), what);
             if (dpe == null)
                 continue;
 
@@ -307,9 +318,44 @@ public class DocInverter {
                 continue;
 
             byte[] bytes =  Utils.getBytes(term, null);
-            typeHandler.export(json, bytes);
-            if (outputLevel > 0)
-                json.value ("BIN: "  + BytesHandler.instance.toString (bytes));
+            if (!postings) {
+                typeHandler.export(json, bytes);
+                if (outputLevel>0) json.value ("BIN: "  + BytesHandler.instance.toString (bytes));
+                continue;
+            }
+            
+            json.startObject();
+            json.startObject(typeHandler.toString(bytes));
+            if (outputLevel>0) json.field("bin", BytesHandler.instance.toString (bytes));
+            int count = dpe.freq();
+            json.field("count", count);
+            if (what != PostingsEnum.FREQS && count>0) {
+                StringBuilder sb = new StringBuilder();
+                json.startArray("postings");
+                for (int i=0; i<count; i++) {
+                    int pos = dpe.nextPosition();
+                    if (dense) {
+                        sb.setLength(0);
+                        sb.append("pos=").append(pos);
+                        if ((what & PostingsEnum.OFFSETS) == PostingsEnum.OFFSETS) {
+                            sb.append(", offset=").append(dpe.startOffset()).append("..").append(dpe.endOffset());
+                        }
+                        json.value(sb.toString());
+                        continue;
+                    }
+                    
+                    json.startObject();
+                    json.field("pos", pos);
+                    if ((what & PostingsEnum.OFFSETS) == PostingsEnum.OFFSETS) {
+                        json.field("start", dpe.startOffset());
+                        json.field("end", dpe.endOffset());
+                    }
+                    json.endObject();
+                }
+                json.endArray();
+            }
+            json.endObject();
+            json.endObject();
         }
     }
 
