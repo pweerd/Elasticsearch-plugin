@@ -6,6 +6,7 @@
       "_view": "Shows contents of a record. {index}/{type}/{id}/_view",
       "_termlist": "Shows indexed terms. {index}/_termlist/{field}"
    },
+   "help": "https://github.com/pweerd/Elasticsearch-plugin/#bitmanagers-elasticsearch-plugin",
    "example": {
       "similarity_example": {
          "settings": {

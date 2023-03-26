@@ -379,6 +379,8 @@ field_expr |       | Limits the output to the fields that match this regex
 output     | (all) | One of stored, indexed, docvalues
 output_lvl | 0     | Shows additional debug information
 offset     | 0     | Value to be added or subtracted to the found docid. (To view the neighbors)
+postings | false | Output postings like positions and offsets 
+dense | false | Output postings in a more dense format as strings 
 
 Viewing all contributions to the indexed fields is a very costly operation. 
 It involves enumerating all terms from the index, and per term check if the requested document could be found by this term.
