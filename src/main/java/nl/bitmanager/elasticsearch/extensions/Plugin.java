@@ -116,9 +116,13 @@ public class Plugin extends org.elasticsearch.plugins.Plugin implements Analysis
         logger.info(sb.toString());
     }
 
+    boolean simLogged;
     @Override
     public void onIndexModule(IndexModule indexModule) {
-        logger.info("Register bounded_similarity");
+        if (!simLogged) {
+            simLogged = true;
+            logger.info("Register bounded_similarity");
+        }
         indexModule.addSimilarity("bounded_similarity", BoundedSimilarity::create);
     }
 
