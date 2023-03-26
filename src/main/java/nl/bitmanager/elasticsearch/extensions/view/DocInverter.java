@@ -21,13 +21,16 @@ package nl.bitmanager.elasticsearch.extensions.view;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -296,19 +299,41 @@ public class DocInverter {
 
     private void extractTerms(XContentBuilder json, Terms terms, FieldInfo fieldInfo, MappedFieldType fieldType, TypeHandler typeHandler) throws IOException {
         TermsEnum te = terms.iterator();
+        int indexOptions = fieldInfo.getIndexOptions().ordinal();
+        if (!postings || indexOptions < IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+            while (true) {
+                BytesRef term = te.next();
+                if (term == null) break;
+
+                PostingsEnum dpe = leafRdr.postings(new Term(fieldInfo.name, term));
+                if (dpe == null)
+                    continue;
+
+                // Try find the doc...
+                if (docId != dpe.advance(docId))
+                    continue;
+
+                byte[] bytes =  Utils.getBytes(term, null);
+                typeHandler.export(json, bytes);
+                if (outputLevel>0) json.value ("BIN: "  + BytesHandler.instance.toString (bytes));
+            }
+            return;
+        }
+        
+        //At this point we know we have postings
+        int what = PostingsEnum.FREQS | PostingsEnum.POSITIONS;
+        boolean offsets = false;
+        if (indexOptions > IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+            what |= PostingsEnum.OFFSETS;
+            offsets = true;
+        }
+        List<_Term> termList = new ArrayList<_Term>();
+
         while (true) {
             BytesRef term = te.next();
             if (term == null)
                 break;
 
-            int what = PostingsEnum.FREQS;
-            if (postings) {
-                switch (fieldInfo.getIndexOptions()) {
-                    case DOCS_AND_FREQS: break;
-                    case DOCS_AND_FREQS_AND_POSITIONS: what |= PostingsEnum.POSITIONS; break;
-                    case DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS: what |= (PostingsEnum.POSITIONS | PostingsEnum.OFFSETS); break;
-                }
-            }
             PostingsEnum dpe = leafRdr.postings(new Term(fieldInfo.name, term), what);
             if (dpe == null)
                 continue;
@@ -317,46 +342,135 @@ public class DocInverter {
             if (docId != dpe.advance(docId))
                 continue;
 
-            byte[] bytes =  Utils.getBytes(term, null);
-            if (!postings) {
-                typeHandler.export(json, bytes);
-                if (outputLevel>0) json.value ("BIN: "  + BytesHandler.instance.toString (bytes));
-                continue;
-            }
-            
-            json.startObject();
-            json.startObject(typeHandler.toString(bytes));
-            if (outputLevel>0) json.field("bin", BytesHandler.instance.toString (bytes));
+            termList.add(new _Term (Utils.getBytes(term, null), dpe));
+        }
+        
+        //Sort the terms on position and term
+        _Term.sort(termList);
+        
+        //Export them, reusing the buffer for dens processing
+        StringBuilder sb = dense ? new StringBuilder() : null;
+        for (_Term t: termList) {
+            t.export(json, typeHandler, outputLevel>0, offsets, sb);
+        }
+    }
+
+    
+    /**
+     * Class to hold a term with its postings. 
+     * Used to be able to sort on 
+     * - first occurrence position
+     * - term itself
+     */
+    static class _Term {
+        byte[] termBytes;
+        List<_Posting> postings;
+        int firstPos;
+        
+        public _Term (byte[] bytes, PostingsEnum dpe) throws IOException {
+            termBytes = bytes;
             int count = dpe.freq();
-            json.field("count", count);
-            if (what != PostingsEnum.FREQS && count>0) {
-                StringBuilder sb = new StringBuilder();
+            postings = new ArrayList<_Posting>(count);
+            for (int i=0; i<count; i++) {
+                postings.add(new _Posting(dpe));
+            }
+        }
+        
+        public void export(XContentBuilder json, TypeHandler typeHandler, boolean bin, boolean offsets, StringBuilder denseBuilder) throws IOException {
+            json.startObject();
+            json.startObject(typeHandler.toString(termBytes));
+            if (bin) json.field("bin", BytesHandler.instance.toString (termBytes));
+            int N = postings.size();
+            json.field("count", N);
+            
+            if (N>0) {
                 json.startArray("postings");
-                for (int i=0; i<count; i++) {
-                    int pos = dpe.nextPosition();
-                    if (dense) {
-                        sb.setLength(0);
-                        sb.append("pos=").append(pos);
-                        if ((what & PostingsEnum.OFFSETS) == PostingsEnum.OFFSETS) {
-                            sb.append(", offset=").append(dpe.startOffset()).append("..").append(dpe.endOffset());
-                        }
-                        json.value(sb.toString());
-                        continue;
-                    }
-                    
-                    json.startObject();
-                    json.field("pos", pos);
-                    if ((what & PostingsEnum.OFFSETS) == PostingsEnum.OFFSETS) {
-                        json.field("start", dpe.startOffset());
-                        json.field("end", dpe.endOffset());
-                    }
-                    json.endObject();
+                for (int i=0; i<N; i++) {
+                    postings.get(i).export(json, offsets, denseBuilder);
                 }
                 json.endArray();
             }
             json.endObject();
             json.endObject();
         }
+        
+        public static void sort(List<_Term> list) {
+            for (int i=0; i<list.size(); i++) {
+                _Term t = list.get(i);
+                List<_Posting> plist = t.postings;
+                switch (plist.size()) {
+                    case 0: break;
+                    case 1: t.firstPos = plist.get(0).pos; break;
+                    default:
+                        plist.sort(_Posting.cbPosOffset);
+                        t.firstPos = plist.get(0).pos; break;
+                }
+            }
+            list.sort(cbPosTerm);
+        }
+        
+        static final Comparator<_Term> cbPosTerm = new Comparator<_Term>() {
+            @Override
+            public int compare(_Term o1, _Term o2) {
+                if (o1.firstPos < o2.firstPos) return -1;
+                if (o1.firstPos > o2.firstPos) return 1;
+                byte[] b1 = o1.termBytes;
+                byte[] b2 = o2.termBytes;
+                int N = Math.min(b1.length, b2.length);
+                for (int i=0; i<N; i++) {
+                    int rc = (b1[i] & 255) - (b1[i] & 255);
+                    if (rc != 0) return rc;
+                }
+                return b1.length - b2.length;
+            }
+        };
+    }
+    
+    /**
+     * Class to hold a posting for a term. 
+     * Postings will be sorted on 
+     * - pos
+     * - endoffset
+     */
+    static class _Posting {
+        int pos;
+        int startOffset;
+        int endOffset;
+        public _Posting(PostingsEnum dpe) throws IOException {
+            pos = dpe.nextPosition();
+            startOffset = dpe.startOffset();
+            endOffset = dpe.endOffset();
+        }
+        
+        public void export (XContentBuilder json, boolean offsets, StringBuilder denseBuilder) throws IOException {
+            if (denseBuilder != null) {
+                denseBuilder.setLength(0);
+                denseBuilder.append("pos=").append(pos);
+                if (offsets) {
+                    denseBuilder.append(", offset=").append(startOffset).append("..").append(endOffset);
+                }
+                json.value(denseBuilder.toString());
+            } else {
+                json.startObject();
+                json.field("pos", pos);
+                if (offsets) {
+                    json.field("start", startOffset);
+                    json.field("end", endOffset);
+                }
+                json.endObject();
+            }
+        }
+        
+        public static final Comparator<_Posting> cbPosOffset = new Comparator<_Posting>() {
+            @Override
+            public int compare(_Posting o1, _Posting o2) {
+                if (o1.pos < o2.pos) return -1;
+                if (o1.pos > o2.pos) return 1;
+                if (o1.endOffset < o2.endOffset) return 1;
+                if (o1.endOffset > o2.endOffset) return -1;
+                return 0;
+            }
+        };
     }
 
     /**
